@@ -1,5 +1,5 @@
-"""Runtime configuration and settings."""
+"""Runtime configuration access."""
 
-from customer_enquiry_triage.config.settings import ConfigLoader, Settings
+from customer_enquiry_triage.config.ConfigLoader import ConfigLoader
 
-__all__ = ["ConfigLoader", "Settings"]
+__all__ = ["ConfigLoader"]
