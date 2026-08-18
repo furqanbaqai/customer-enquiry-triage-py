@@ -2,7 +2,7 @@ import logging
 
 import pytest
 
-from customer_enquiry_triage.app import main
+from src.app import main
 
 
 def test_main_reports_ready(caplog: pytest.LogCaptureFixture) -> None:

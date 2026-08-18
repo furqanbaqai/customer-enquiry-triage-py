@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from customer_enquiry_triage.config import ConfigLoader
+from src.config import ConfigLoader
 
 
 def test_get_returns_configuration_by_key(tmp_path: Path) -> None:

@@ -12,7 +12,7 @@ class ConfigLoader:
     """Load configuration from the project ``.env`` file and process environment."""
 
     _KEY_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]*$")
-    _ENV_FILE = Path(__file__).resolve().parents[3] / ".env"
+    _ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
     configurations: ClassVar[dict[str, str]] = {}
 
     @classmethod
@@ -48,5 +48,3 @@ class ConfigLoader:
         if not cls.configurations:
             cls.load_configurations()
         return cls.configurations.get(key, default)
-    
-ConfigLoader.load_configurations()

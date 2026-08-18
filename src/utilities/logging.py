@@ -8,7 +8,7 @@ Reference: https://github.com/openfintechlab/pytrace-backlogs/issues/12
 import logging
 from typing import Any, ClassVar
 
-from customer_enquiry_triage.config import ConfigLoader
+from src.config import ConfigLoader
 
 
 class Logging:
