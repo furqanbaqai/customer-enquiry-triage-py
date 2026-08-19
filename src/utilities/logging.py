@@ -1,9 +1,13 @@
+# -*- coding: utf-8 -*-
+
+"""\
+Copyright 2026-2028 openfintechlab.com, Inc. All rights reserved.\
+Licenses: LICENSE.md\
+Description: Provides centralized, configurable logging for the customer enquiry triage service.\
+Reference: https://github.com/furqanbaqai/customer-enquiry-triage-py/blob/main/src/utilities/logging.py\
 """
-Copyright 2026-2028 openfintechlab.com, Inc. All rights reserved.
-Licenses: LICENSE.md
-Description: Centralized logging utility for the customer enquiry triage service.
-Reference: https://github.com/openfintechlab/pytrace-backlogs/issues/12
-"""
+
+# ruff: noqa: UP009 -- The project copyright header requires an encoding declaration.
 
 import logging
 from typing import Any, ClassVar
@@ -15,9 +19,7 @@ class Logging:
     """Utility class for centralized application logging."""
 
     _DEFAULT_LEVEL = "INFO"
-    _DEFAULT_FORMAT = (
-        "[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s"
-    )
+    _DEFAULT_FORMAT = "[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s"
     _logger: ClassVar[logging.Logger] = logging.getLogger("OFTL")
     _configured: ClassVar[bool] = False
 

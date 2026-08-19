@@ -6,8 +6,7 @@ from src.config import ConfigLoader
 def test_get_returns_configuration_by_key(tmp_path: Path) -> None:
     env_file = tmp_path / ".env"
     env_file.write_text(
-        "GENAI_URL=https://example.com/v1/chat/completions\n"
-        "api_lowercase=ignored\n",
+        "GENAI_URL=https://example.com/v1/chat/completions\napi_lowercase=ignored\n",
         encoding="utf-8",
     )
 

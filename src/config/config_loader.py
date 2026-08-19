@@ -1,4 +1,13 @@
-"""Generic application configuration loader."""
+# -*- coding: utf-8 -*-
+
+"""\
+Copyright 2026-2028 openfintechlab.com, Inc. All rights reserved.\
+Licenses: LICENSE.md\
+Description: Loads and validates application configuration from environment sources.\
+Reference: https://github.com/furqanbaqai/customer-enquiry-triage-py/blob/main/src/config/config_loader.py\
+"""
+
+# ruff: noqa: UP009 -- The project copyright header requires an encoding declaration.
 
 import os
 import re
