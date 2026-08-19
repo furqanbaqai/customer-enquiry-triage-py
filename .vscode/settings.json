@@ -1,0 +1,12 @@
+{
+  "terminal.integrated.env.windows": {
+    "PATH": "D:\\binaries\\IBM\\MQClient\\10.0.0.0-IBM-MQC-Redist-Win64\\bin64;D:\\binaries\\IBM\\MQClient\\10.0.0.0-IBM-MQC-Redist-Win64\\bin;${env:PATH}"
+  },
+  "python-envs.pythonProjects": [
+    {
+      "path": ".",
+      "envManager": "ms-python.python:venv",
+      "packageManager": "ms-python.python:pip"
+    }
+  ]
+}

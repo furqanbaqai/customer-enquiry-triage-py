@@ -1,0 +1,56 @@
+"""\
+Copyright 2026-2028 openfintechlab.com, Inc. All rights reserved.\
+Licenses: LICENSE.md
+Description: Coordinates the end-to-end processing of incoming customer enquiries.
+Reference: https://github.com/furqanbaqai/customer-enquiry-triage-py
+"""
+
+import json
+from importlib.resources import files
+
+from jsonschema import ValidationError, validate
+
+
+class CustomerEnquiryOrchestrator:
+    """
+    Coordinate the end-to-end processing of an incoming customer enquiry.
+    Main tasks include:
+    - Deserialize and validate the incoming message.
+    - Check for duplicate processing using the enquiry/message ID.
+    - Invoke the domain classification workflow.
+    - Call the AI-classification interface.
+    - Persist the enquiry and processing history.
+    - Publish the result through an output-queue interface.
+    - Coordinate transaction completion or rollback.
+    """
+
+    @staticmethod
+    def parse_enquiry_message(message: bytes) -> dict[str, object]:
+        """Parse and validate an incoming enquiry message."""
+        try:
+            enquiry = json.loads(message.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise ValueError("The enquiry message must be valid UTF-8 JSON") from error
+
+        schema_resource = files("src.application").joinpath("schema", "enquiry-request-v1.0.json")
+        try:
+            with schema_resource.open(encoding="utf-8") as schema_file:
+                schema = json.load(schema_file)
+            validate(instance=enquiry, schema=schema)
+        except (OSError, json.JSONDecodeError) as error:
+            raise ValueError("Unable to load the enquiry request schema") from error
+        except ValidationError as error:
+            raise ValueError("The enquiry message does not match the request schema") from error
+
+        if not isinstance(enquiry, dict):
+            raise ValueError("The enquiry message must be a JSON object")
+        return enquiry
+
+    def process_enquiry(self, message: bytes) -> None:
+        """
+        Process an incoming customer enquiry message.
+        :param message: The raw message bytes received from the input queue.
+        """
+        self.parse_enquiry_message(message)
+        # TODO: Implement the rest of the processing logic here
+        pass

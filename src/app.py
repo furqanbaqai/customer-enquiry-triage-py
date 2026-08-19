@@ -18,6 +18,7 @@ from typing import Any
 from src.config import ConfigLoader
 from src.infrastructure import IBMMQClient, IBMMQSettings
 from src.utilities import Logging
+from src.application.CustomerEnquiryOrchaestrator import CustomerEnquiryOrchestrator
 
 _PROJECT_FILE = Path(__file__).resolve().parents[1] / "pyproject.toml"
 
@@ -33,8 +34,10 @@ def on_message(**kwargs: Any) -> None:
     message_length = callback_context.DataLength if callback_context is not None else None
     payload = message[:message_length] if message is not None else b""
     Logging.info("Received IBM MQ request message (%d bytes).", len(payload))
-    # TODO! Customer-enquiry processing will be invoked here.
-
+    try:
+        CustomerEnquiryOrchestrator().process_enquiry(payload)
+    except Exception as exception:
+        Logging.error("Failed to process customer enquiry: %s", exception)
 
 def main() -> None:
     """Start the customer enquiry triage service."""
