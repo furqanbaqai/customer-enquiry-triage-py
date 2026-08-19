@@ -13,8 +13,8 @@ from jsonschema import ValidationError, validate
 
 class CustomerEnquiryOrchestrator:
     """
-    Coordinate the end-to-end processing of an incoming customer enquiry.
-    Main tasks include:
+    Coordinate the end-to-end processing of an incoming customer enquiry message.
+    <br/><br/>Main tasks include:
     - Deserialize and validate the incoming message.
     - Check for duplicate processing using the enquiry/message ID.
     - Invoke the domain classification workflow.
