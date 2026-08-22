@@ -9,17 +9,14 @@ Reference: https://github.com/furqanbaqai/customer-enquiry-triage-py/blob/main/s
 
 # ruff: noqa: UP009 -- The project copyright header requires an encoding declaration.
 
-import ibmmq  # type: ignore[import-untyped]  # The vendor package does not publish type data.
-
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
-from src.utilities import Logging
+
+import ibmmq  # type: ignore[import-untyped]  # The vendor package does not publish type data.
+
 from src.config import ConfigLoader
-
-
-
-
+from src.utilities import Logging
 
 MessageCallback = Callable[..., None]
 
@@ -112,7 +109,9 @@ class IBMMQClient:
 
     def start_consumer(self, callback: MessageCallback) -> None:
         """Open the request queue, register ``callback``, and start MQ async delivery."""
-        Logging.info("[IBM-MQ]]Starting IBM MQ consumer for queue: %s", self._settings.request_queue)
+        Logging.info(
+            "[IBM-MQ]]Starting IBM MQ consumer for queue: %s", self._settings.request_queue
+        )
         Logging.debug("[IBM-MQ] IBM MQ settings: %s", self._settings)
         self.connect()
         queue_manager = self._queue_manager

@@ -15,15 +15,15 @@ from pathlib import Path
 from threading import Event
 from typing import Any
 
+from src.application.CustomerEnquiryOrchaestrator import CustomerEnquiryOrchestrator
 from src.config import ConfigLoader
 from src.infrastructure import IBMMQClient, IBMMQSettings
 from src.utilities import Logging
-from src.application.CustomerEnquiryOrchaestrator import CustomerEnquiryOrchestrator
 
 _PROJECT_FILE = Path(__file__).resolve().parents[1] / "pyproject.toml"
 
 
-def on_message(**kwargs: Any) -> None:
+def on_message(orchestrator: CustomerEnquiryOrchestrator | None = None, **kwargs: Any) -> None:
     """Handle a message delivered asynchronously from the request queue."""
     message = kwargs.get("msg")
     callback_context = kwargs.get("cbc")
@@ -35,9 +35,10 @@ def on_message(**kwargs: Any) -> None:
     payload = message[:message_length] if message is not None else b""
     Logging.info("Received IBM MQ request message (%d bytes).", len(payload))
     try:
-        CustomerEnquiryOrchestrator().process_enquiry(payload)
+        (orchestrator or CustomerEnquiryOrchestrator()).process_enquiry(payload)
     except Exception as exception:
         Logging.error("Failed to process customer enquiry: %s", exception)
+
 
 def main() -> None:
     """Start the customer enquiry triage service."""
@@ -46,6 +47,7 @@ def main() -> None:
     display_project_information()
 
     client = IBMMQClient(IBMMQSettings.from_config())
+    orchestrator = CustomerEnquiryOrchestrator()
     stop_event = Event()
 
     def request_shutdown(_signum: int, _frame: Any) -> None:
@@ -59,7 +61,7 @@ def main() -> None:
         signal.signal(signal.SIGTSTP, request_shutdown)
 
     try:
-        client.start_consumer(on_message)
+        client.start_consumer(lambda **kwargs: on_message(orchestrator, **kwargs))
         Logging.info("Customer enquiry triage service is consuming IBM MQ requests.")
         stop_event.wait()
     except (KeyboardInterrupt, EOFError):

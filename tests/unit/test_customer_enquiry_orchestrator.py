@@ -1,4 +1,5 @@
 import json
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -35,3 +36,27 @@ def test_parse_enquiry_message_rejects_schema_violation() -> None:
 
     with pytest.raises(ValueError, match="does not match the request schema"):
         CustomerEnquiryOrchestrator.parse_enquiry_message(json.dumps(enquiry).encode())
+
+
+def test_process_enquiry_sends_rendered_configured_prompt() -> None:
+    enquiry = valid_enquiry()
+    meta = enquiry["meta"]
+    assert isinstance(meta, dict)
+    prompt_loader = MagicMock()
+    prompt_loader.load_configured_prompt.return_value = "rendered prompt"
+    prompt_sender = MagicMock()
+    orchestrator = CustomerEnquiryOrchestrator(prompt_loader, prompt_sender)
+
+    orchestrator.process_enquiry(json.dumps(enquiry).encode())
+
+    prompt_loader.load_configured_prompt.assert_called_once_with(
+        "OFTL_AI_PROMPT_1",
+        {
+            "MESSAGE": enquiry["message"],
+            "FIRST_NAME": enquiry["firstName"],
+            "LAST_NAME": enquiry["lastName"],
+            "CHANNEL": meta["channel"],
+            "REFERENCE_NUMBER": meta["refNumber"],
+        },
+    )
+    prompt_sender.assert_called_once_with("rendered prompt")
