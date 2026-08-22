@@ -74,6 +74,19 @@ Use `uv add <package>` or `uv add --dev <package>` for dependency changes so `py
 
 ## Python and design conventions
 
+- Every new Python file must begin with this module docstring before any imports. Replace the
+  description placeholder with a concise, file-specific description. The `Reference` value must
+  be the GitHub project URL only; do not link to a file, branch, issue, or non-GitHub page.
+
+  ```python
+  """
+  Copyright 2026-2028 openfintechlab.com, Inc. All rights reserved.
+  Licenses: LICENSE.md
+  Description: DESCRIPTION OF THE FILE / CLASS / MODULE
+  Reference: URL TO GITHUB PROJECT ONLY
+  """
+  ```
+
 - Follow the configured Ruff rules and 100-character line length. Format with `uv run ruff format .`.
 - Add type annotations to production and test code. The repository uses strict mypy; avoid `Any`, unchecked casts, and blanket `# type: ignore` comments. If suppression is unavoidable, make it narrow and explain why.
 - Prefer small modules, explicit dependencies, immutable domain values where practical, and standard-library types.

@@ -1,29 +1,104 @@
-# customer-enquiry-triage-py
-Specialized AI Proxy that consumes customer enquiries off IBM MQ, calls an AI endpoint (OpenAI-compatible chat completion) to classify each one, persists tracking/history state in SQL Server, and republishes the classification result to another MQ queue
+# Customer Enquiry Triage
 
-The service consumes requests with IBM MQ's asynchronous MQCB/MQCTL API. Copy `.env.example` to
-`.env` and configure the `OFTL_IMQ_*` values before startup. The connection fields are required;
-the request, result, and backout queue names have defaults in `.env.example`.
+Python service that consumes customer enquiries from IBM MQ, validates them, builds a configured
+prompt, and submits it to an OpenAI-compatible classification endpoint.
 
-The `ibmmq` package requires the IBM MQ C client runtime. Install the IBM MQ Redistributable Client
-and make its libraries available to the process before running `uv run python -m src`.
+## Features
+
+- Asynchronous IBM MQ consumption with worker-isolated processing
+- JSON Schema validation for incoming enquiries
+- Markdown prompt templates with `{{VARIABLE_NAME}}` substitution
+- Configurable OpenAI-compatible Chat Completions client
+- Environment-based configuration and structured logging
+
+> [!NOTE]
+> SQL Server persistence and publishing to result or backout queues are not implemented yet.
+
+## Requirements
+
+- Python 3.12 or newer
+- [`uv`](https://docs.astral.sh/uv/)
+- IBM MQ C client runtime and SDK components
+- Access to IBM MQ and an OpenAI-compatible endpoint
+
+## Quick start
+
+```powershell
+git clone https://github.com/furqanbaqai/customer-enquiry-triage-py.git
+cd customer-enquiry-triage-py
+uv sync --dev
+Copy-Item .env.example .env
+```
+
+Update `.env` with your MQ connection, API token, and endpoint values, then start the service:
+
+```powershell
+uv run python -m src
+```
+
+The installed command is equivalent:
+
+```powershell
+uv run customer-enquiry-triage
+```
+
+## Configuration
+
+| Variable | Required | Default or example |
+| --- | --- | --- |
+| `OFTL_OPENAI_URL` | Yes | OpenAI-compatible base or `/chat/completions` URL |
+| `OFTL_OPENAI_APITOKEN` | Yes | No default |
+| `OFTL_OPENAI_TEMPERATURE` | No | `0.1` |
+| `OFTL_OPENAI_TOP_P` | No | `0.9` |
+| `OFTL_OPENAI_MAX_TOKENS` | No | `200` |
+| `OFTL_OPENAI_STREAM` | No | `False` |
+| `OFTL_AI_PROMPT_1` | Yes | `prompts/customer_enquiry_triage.md` |
+| `OFTL_IMQ_QMGR` | Yes | No default |
+| `OFTL_IMQ_CHANNEL` | Yes | No default |
+| `OFTL_IMQ_LISTENER` | Yes | `1414` in `.env.example` |
+| `OFTL_IMQ_USERNAME` | Yes | No default |
+| `OFTL_IMQ_PASS` | Yes | No default |
+| `OFTL_IMQ_HOST` | Yes | No default |
+| `OFTL_IMQ_REQUEST_QUEUE` | No | `AI.CUST.ENQ.TRIAGE.REQUEST.Q` |
+| `OFTL_LOG_LEVEL` | No | `INFO` |
+| `OFTL_LOG_FORMAT` | No | See `.env.example` |
+
+See [`.env.example`](.env.example) for the complete configuration. Never commit `.env` or real
+credentials.
 
 ## Prompt templates
 
-Set `OFTL_AI_PROMPT_1` to the path of the Markdown template used for customer enquiry
-classification. The repository example uses `prompts/customer_enquiry_triage.md`; paths are
-resolved relative to the service process's working directory.
+Templates are UTF-8 Markdown files with uppercase placeholders such as `{{MESSAGE}}`. Paths are
+resolved from the service working directory. Missing files, blank templates, and unresolved
+placeholders fail with a clear error.
 
-Templates use uppercase `{{VARIABLE_NAME}}` placeholders. Replacement dictionaries are flat (no
-nested attribute lookup), extra values are ignored, and `None` renders as an empty string. Prompt
-rendering fails clearly if the setting is missing or blank, the file is invalid or empty, or any
-placeholders remain unresolved. Templates are read as UTF-8 and only the original template is
-cached; rendered prompts containing customer data are never cached or logged.
+## Development
 
-## OpenAI-compatible endpoint
+Run the quality checks before submitting a change:
 
-Set the required `OFTL_OPENAI_URL` and `OFTL_OPENAI_APITOKEN` values. The URL may be either an API
-base URL or a full `/chat/completions` URL. Optional request settings and their defaults are
-`OFTL_OPENAI_TEMPERATURE=0.1`, `OFTL_OPENAI_TOP_P=0.9`, `OFTL_OPENAI_MAX_TOKENS=200`, and
-`OFTL_OPENAI_STREAM=False`. When streaming is enabled, the utility combines the streamed text
-chunks into one classification response.
+```powershell
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy src tests
+uv run pytest -q
+```
+
+## Project structure
+
+```text
+src/application/     Enquiry orchestration and request schema
+src/config/          Environment configuration
+src/infrastructure/  IBM MQ adapter
+src/utilities/       Logging, prompt, and OpenAI helpers
+prompts/             Markdown prompt templates
+tests/               Unit and integration tests
+```
+
+## Contributing
+
+Open an issue before proposing a substantial change. Keep pull requests focused, add tests for
+behavior changes, and ensure the development checks pass.
+
+## License
+
+Licensed under the [Apache License 2.0](LICENSE).

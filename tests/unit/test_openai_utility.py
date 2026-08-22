@@ -1,3 +1,10 @@
+"""
+Copyright 2026-2028 openfintechlab.com, Inc. All rights reserved.
+Licenses: LICENSE.md
+Description: Verifies the OpenAI-compatible endpoint utility in isolation.
+Reference: https://github.com/furqanbaqai/customer-enquiry-triage-py
+"""
+
 from unittest.mock import MagicMock
 
 import pytest

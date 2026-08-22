@@ -1,4 +1,9 @@
-"""Call an OpenAI-compatible chat-completions endpoint."""
+"""
+Copyright 2026-2028 openfintechlab.com, Inc. All rights reserved.
+Licenses: LICENSE.md
+Description: Provides an environment-configured OpenAI-compatible endpoint utility.
+Reference: https://github.com/furqanbaqai/customer-enquiry-triage-py
+"""
 
 import json
 from collections.abc import Callable
