@@ -2,7 +2,9 @@
 
 ## Purpose and scope
 
-This repository implements a long-running Python service that consumes customer enquiries from IBM MQ, classifies them through an OpenAI-compatible endpoint, stores tracking and history data in SQL Server, and publishes classification results to an output queue.
+This repository is an early proof of concept for a long-running Python service that will consume customer enquiries from IBM MQ, classify them through an OpenAI-compatible endpoint, store tracking and history data in SQL Server, and publish classification results to an output queue.
+
+The currently implemented runtime is narrower: it loads environment configuration, connects to IBM MQ, registers an asynchronous consumer, validates each UTF-8 JSON message against the bundled request schema, logs success or failure, and shuts down gracefully. AI calls, SQL Server persistence, result/backout publishing, duplicate detection, retries, and transaction handling are not implemented yet. Do not describe those planned capabilities as operational.
 
 These instructions apply to the entire repository. Keep this file current when the architecture, tooling, or required validation changes.
 
@@ -10,15 +12,28 @@ These instructions apply to the entire repository. Keep this file current when t
 
 - `src/app.py`: application entry point and composition root. Construct and connect dependencies here; keep business rules out of it.
 - `src/__main__.py`: support for `python -m src`.
-- `src/application/`: use cases and orchestration. Coordinate domain logic and ports without depending on concrete infrastructure.
-- `src/domain/`: business entities, value objects, policies, and domain errors. Keep this layer independent of MQ, SQLAlchemy, HTTP clients, and environment configuration.
-- `src/infrastructure/`: concrete adapters for IBM MQ, SQL Server, and the AI endpoint.
+- `src/application/CustomerEnquiryOrchaestrator.py`: current orchestration skeleton. It parses and validates request messages; the remaining workflow is marked TODO. Preserve the existing filename spelling unless a deliberate rename updates every import.
+- `src/application/schema/enquiry-request-v1.0.json`: bundled JSON Schema for incoming messages.
+- `src/domain/`: reserved for business entities, value objects, policies, and domain errors; currently empty apart from package initialization. Keep this layer independent of MQ, SQLAlchemy, HTTP clients, and environment configuration.
+- `src/infrastructure/ibm_mq.py`: the only implemented external adapter. It validates IBM MQ settings and manages the asynchronous consumer lifecycle. SQL Server and AI endpoint adapters do not exist yet.
 - `src/config/`: configuration loading and validation.
 - `src/utilities/`: small cross-cutting helpers such as logging. Do not turn this into a miscellaneous business-logic package.
 - `tests/unit/`: fast, isolated tests.
 - `tests/integration/`: tests that exercise adapter boundaries or real/ephemeral services.
 
-The application is still an early skeleton. Preserve the intended dependency direction: infrastructure depends on application/domain contracts; domain code must not import infrastructure.
+Preserve the intended dependency direction: infrastructure depends on application/domain contracts; domain code must not import infrastructure.
+
+## Current runtime behavior
+
+1. `src.app.main()` loads `.env` plus process environment values through `ConfigLoader`; process values win.
+2. It reads version and description from `pyproject.toml`, builds `IBMMQSettings`, and starts `IBMMQClient`.
+3. The MQ adapter connects with `ibmmq.connect`, opens only the configured request queue, registers an MQCB callback, and starts delivery with MQCTL.
+4. The callback slices the supplied bytes to MQ's reported `DataLength` and invokes a new `CustomerEnquiryOrchestrator`.
+5. The orchestrator decodes UTF-8 JSON and validates it against the packaged request schema. It performs no downstream processing after validation.
+6. Callback exceptions are logged and swallowed. The consumer currently uses `MQGMO_NO_SYNCPOINT`, so delivery is not transactional and failed messages are not automatically rolled back by this code.
+7. Console interrupt signals set a stop event; shutdown stops and deregisters the callback, closes the request queue, and disconnects the queue manager.
+
+The schema requires `meta`, `mobileNumber`, `firstName`, `lastName`, `emailAddress`, `message`, and `receivedAt`; `customerId` is optional. `meta.refNumber`, `meta.channel`, and `meta.reqIssuedAt` are required, and additional properties are rejected. Although date-time and email formats are declared, the current `jsonschema.validate` call does not supply a format checker, so those formats are annotations rather than enforced validation.
 
 ## Environment and commands
 

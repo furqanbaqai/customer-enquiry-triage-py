@@ -38,6 +38,12 @@ class Logging:
         cls._configured = True
 
     @classmethod
+    def debug(cls, message: str, *args: Any, **kwargs: Any) -> None:
+        """Write a debug log message."""
+        cls.configure()
+        cls._logger.debug(message, *args, **kwargs)
+
+    @classmethod
     def info(cls, message: str, *args: Any, **kwargs: Any) -> None:
         """Write an informational log message."""
         cls.configure()

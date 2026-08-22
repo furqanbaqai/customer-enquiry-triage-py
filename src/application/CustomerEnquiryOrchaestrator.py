@@ -6,9 +6,10 @@ Reference: https://github.com/furqanbaqai/customer-enquiry-triage-py
 """
 
 import json
-from importlib.resources import files
 
+from importlib.resources import files
 from jsonschema import ValidationError, validate
+from src.utilities import Logging
 
 
 class CustomerEnquiryOrchestrator:
@@ -51,6 +52,21 @@ class CustomerEnquiryOrchestrator:
         Process an incoming customer enquiry message.
         :param message: The raw message bytes received from the input queue.
         """
-        self.parse_enquiry_message(message)
-        # TODO: Implement the rest of the processing logic here
-        pass
+        
+        try:
+            Logging.info("[CEP] Processing incoming customer enquiry message (%d bytes).", len(message))
+            _response = self.parse_enquiry_message(message)
+
+            # TODO: Implement the rest of the processing logic here
+            pass
+        except ValidationError as error:
+            raise ValueError(
+                "The enquiry message does not match the request schema"
+            ) from error
+        except ValueError:
+            # Preserve the specific validation error raised while parsing.
+            raise
+        except Exception as error:
+            raise RuntimeError(
+                "An unexpected error occurred while processing the enquiry"
+            ) from error

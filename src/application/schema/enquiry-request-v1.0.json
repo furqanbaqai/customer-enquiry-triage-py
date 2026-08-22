@@ -94,6 +94,37 @@
       "description": "Customer enquiry or complaint message."
     },
 
+    "category": {
+      "type": "string",
+      "maxLength": 46,
+      "enum": [
+        "Account",
+        "Credit Card / Covered Credit Card",
+        "Finance",
+        "Fixed Deposit",
+        "Online banking",
+        "Payments",
+        "Prepaid Card",
+        "SIB Digital App",
+        "Service Request",
+        "Personal Finance",
+        "Current Account",
+        "Digital Account",
+        "Real Estate Finance",
+        "Takaful Insurance",
+        "Car Finance",
+        "Savings Account",
+        "Statements",
+        "Corporate Account",
+        "Tayseer (Advance Salary)",
+        "Safe Locker",
+        "ATM/CCDM",
+        "Retail Accounts",
+        "Priority Account"
+      ],
+      "description": "Category of the customer enquiry."
+    },
+
     "receivedAt": {
       "type": "string",
       "format": "date-time",
