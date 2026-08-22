@@ -19,3 +19,11 @@ nested attribute lookup), extra values are ignored, and `None` renders as an emp
 rendering fails clearly if the setting is missing or blank, the file is invalid or empty, or any
 placeholders remain unresolved. Templates are read as UTF-8 and only the original template is
 cached; rendered prompts containing customer data are never cached or logged.
+
+## OpenAI-compatible endpoint
+
+Set the required `OFTL_OPENAI_URL` and `OFTL_OPENAI_APITOKEN` values. The URL may be either an API
+base URL or a full `/chat/completions` URL. Optional request settings and their defaults are
+`OFTL_OPENAI_TEMPERATURE=0.1`, `OFTL_OPENAI_TOP_P=0.9`, `OFTL_OPENAI_MAX_TOKENS=200`, and
+`OFTL_OPENAI_STREAM=False`. When streaming is enabled, the utility combines the streamed text
+chunks into one classification response.

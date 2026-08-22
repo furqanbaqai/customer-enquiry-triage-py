@@ -6,11 +6,12 @@ Reference: https://github.com/furqanbaqai/customer-enquiry-triage-py
 """
 
 import json
+from collections.abc import Callable
 from importlib.resources import files
 
 from jsonschema import ValidationError, validate
 
-from src.utilities import Logging, PromptLoader
+from src.utilities import Logging, OpenAIUtility, PromptLoader
 
 
 class CustomerEnquiryOrchestrator:
@@ -29,10 +30,12 @@ class CustomerEnquiryOrchestrator:
     def __init__(
         self,
         prompt_loader: PromptLoader | None = None,
+        prompt_sender: Callable[[str], str] | None = None,
         prompt_configuration_key: str = "OFTL_AI_PROMPT_1",
     ) -> None:
         """Create the orchestrator with injectable prompt and AI boundaries."""
         self._prompt_loader = prompt_loader or PromptLoader()
+        self._func_OpenaiUtil_callJSON = prompt_sender or OpenAIUtility().callJson
         self._prompt_configuration_key = prompt_configuration_key
 
     @staticmethod
@@ -68,9 +71,13 @@ class CustomerEnquiryOrchestrator:
                 "[CEP] Parsing incoming customer enquiry message (%d bytes).", len(message)
             )
             enquiry_message = self.parse_enquiry_message(message)
+            Logging.info("[CEP] Loading from %s.", self._prompt_configuration_key)
             prompt = self._generate_prompt(enquiry_message, self._prompt_configuration_key)
 
-            Logging.debug("[CEP] Prompt generated for AI classification: %s", prompt)
+            Logging.info("[CEP] Customer enquiry submitted for AI classification.")
+            result = self._func_OpenaiUtil_callJSON(prompt)
+            Logging.info("[CEP] AI classification completed successfully.")
+            Logging.debug("[CEP] AI classification result: %s", json.dumps(result))
 
         except ValidationError as error:
             raise ValueError("The enquiry message does not match the request schema") from error
@@ -79,7 +86,7 @@ class CustomerEnquiryOrchestrator:
             raise
         except Exception as error:
             raise RuntimeError(
-                "An unexpected error occurred while processing the enquiry"
+                "An unexpected error occurred while processing the enquiry: %s", str(error)
             ) from error
 
     def _generate_prompt(self, enquiry: dict[str, object], promptConfigKey: str) -> str:

@@ -11,6 +11,7 @@ Reference: https://github.com/furqanbaqai/customer-enquiry-triage-py/blob/main/s
 
 import signal
 import tomllib
+from concurrent.futures import Executor, ThreadPoolExecutor
 from pathlib import Path
 from threading import Event
 from typing import Any
@@ -40,6 +41,37 @@ def on_message(orchestrator: CustomerEnquiryOrchestrator | None = None, **kwargs
         Logging.error("Failed to process customer enquiry: %s", exception)
 
 
+def dispatch_message(
+    executor: Executor,
+    orchestrator: CustomerEnquiryOrchestrator,
+    **kwargs: Any,
+) -> None:
+    """Copy an MQ delivery and submit it to the application worker.
+
+    IBM MQ owns the callback buffers. Copying the payload before returning prevents the worker from
+    reading memory that MQ has already reused for a subsequent delivery.
+    """
+    callback_context = kwargs.get("cbc")
+    reason = callback_context.Reason if callback_context is not None else 0
+    message_length = callback_context.DataLength if callback_context is not None else None
+    message = kwargs.get("msg")
+    payload = bytes(message[:message_length]) if message is not None else b""
+    executor.submit(
+        on_message,
+        orchestrator,
+        msg=payload,
+        cbc=_CallbackContext(reason=reason, data_length=len(payload)),
+    )
+
+
+class _CallbackContext:
+    """Worker-safe subset of the MQ callback context used by ``on_message``."""
+
+    def __init__(self, reason: int, data_length: int) -> None:
+        self.Reason = reason
+        self.DataLength = data_length
+
+
 def main() -> None:
     """Start the customer enquiry triage service."""
     ConfigLoader.load_configurations()
@@ -48,6 +80,7 @@ def main() -> None:
 
     client = IBMMQClient(IBMMQSettings.from_config())
     orchestrator = CustomerEnquiryOrchestrator()
+    executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="enquiry-worker")
     stop_event = Event()
 
     def request_shutdown(_signum: int, _frame: Any) -> None:
@@ -61,13 +94,14 @@ def main() -> None:
         signal.signal(signal.SIGTSTP, request_shutdown)
 
     try:
-        client.start_consumer(lambda **kwargs: on_message(orchestrator, **kwargs))
+        client.start_consumer(lambda **kwargs: dispatch_message(executor, orchestrator, **kwargs))
         Logging.info("Customer enquiry triage service is consuming IBM MQ requests.")
         stop_event.wait()
     except (KeyboardInterrupt, EOFError):
         Logging.info("Customer enquiry triage service is stopping.")
     finally:
         client.close()
+        executor.shutdown(wait=True)
 
 
 def display_banner() -> None:
