@@ -13,6 +13,7 @@
     "lastName",
     "emailAddress",
     "message",
+    "category",
     "receivedAt"
   ],
 
@@ -96,32 +97,7 @@
 
     "category": {
       "type": "string",
-      "maxLength": 46,
-      "enum": [
-        "Account",
-        "Credit Card / Covered Credit Card",
-        "Finance",
-        "Fixed Deposit",
-        "Online banking",
-        "Payments",
-        "Prepaid Card",
-        "SIB Digital App",
-        "Service Request",
-        "Personal Finance",
-        "Current Account",
-        "Digital Account",
-        "Real Estate Finance",
-        "Takaful Insurance",
-        "Car Finance",
-        "Savings Account",
-        "Statements",
-        "Corporate Account",
-        "Tayseer (Advance Salary)",
-        "Safe Locker",
-        "ATM/CCDM",
-        "Retail Accounts",
-        "Priority Account"
-      ],
+      "maxLength": 46,     
       "description": "Category of the customer enquiry."
     },
 

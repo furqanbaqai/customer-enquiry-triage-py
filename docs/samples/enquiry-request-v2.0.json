@@ -1,0 +1,15 @@
+{
+  "meta": {
+    "refNumber": "ENQ-2026-0001",
+    "channel": "WebSite",
+    "reqIssuedAt": "2026-08-08T11:59:55Z"
+  },
+  "customerId": "CUST10042001",
+  "mobileNumber": "+971501234567",
+  "firstName": "Ahmed",
+  "lastName": "Khan",
+  "emailAddress": "ahmed.khan@example.com",
+  "message": "Can I use the mobile app outside the UAE while travelling? Please share the correct process, charges, and expected timeline if applicable.",
+  "category": "Digital Account",
+  "receivedAt": "2026-08-08T12:00:00Z"
+}

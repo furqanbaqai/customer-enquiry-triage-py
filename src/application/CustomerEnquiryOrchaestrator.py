@@ -94,11 +94,5 @@ class CustomerEnquiryOrchestrator:
         meta = enquiry["meta"]
         if not isinstance(meta, dict):
             raise ValueError("The enquiry metadata must be a JSON object")
-        prompt_variables = {
-            "MESSAGE": enquiry["message"],
-            "FIRST_NAME": enquiry["firstName"],
-            "LAST_NAME": enquiry["lastName"],
-            "CHANNEL": meta["channel"],
-            "REFERENCE_NUMBER": meta["refNumber"],
-        }
+        prompt_variables = {"MESSAGE": enquiry["message"], "CATEGORY": enquiry["category"]}
         return self._prompt_loader.load_configured_prompt(promptConfigKey, prompt_variables)
