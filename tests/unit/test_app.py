@@ -19,7 +19,7 @@ def test_display_project_information(tmp_path: Path, capsys: pytest.CaptureFixtu
     assert capsys.readouterr().out == "Version: 1.2.3\nDescription: Example service\n"
 
 
-def test_main_starts_async_consumer(
+def test_main_starts_consumer(
     caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     caplog.set_level(logging.INFO, logger="OFTL")
@@ -39,7 +39,7 @@ def test_main_starts_async_consumer(
     executor.submit.assert_called_once()
     submitted = executor.submit.call_args
     submitted.args[0](*submitted.args[1:], **submitted.kwargs)
-    assert "Customer enquiry triage service is consuming IBM MQ requests." in caplog.messages
+    assert "[CEP] Customer enquiry triage service is consuming IBM MQ requests." in caplog.messages
     assert "Received IBM MQ request message (8 bytes)." in caplog.messages
     client.close.assert_called_once_with()
     executor.shutdown.assert_called_once_with(wait=True)

@@ -1,0 +1,36 @@
+{
+  "meta": {
+    "refNumber": "ENQ-2026-0001",
+    "channel": "WebSite",
+    "reqIssuedAt": "2026-08-08T11:59:55Z",
+    "responseCode": "",
+    "responseDescription": ""
+  },
+  "orignalMessage": {
+    "customerId": "CUST10042001",
+    "mobileNumber": "+971501234567",
+    "firstName": "Ahmed",
+    "lastName": "Khan",
+    "emailAddress": "ahmed.khan@example.com",
+    "message": "Can I use the mobile app outside the UAE while travelling? Please share the correct process, charges, and expected timeline if applicable.",
+    "category": "Digital Account",
+    "receivedAt": "2026-08-08T12:00:00Z"
+  },
+  "aiAssesment": {
+    "type": "Complaint",
+    "product": "Savings Account",
+    "category": "Savings Account",
+    "priority": "High",
+    "emotionalType": "Frustrated",
+    "emotionScore": 0.8,
+    "confidence": 0.95,
+    "human_review_required": false,
+    "reason": "Customer reported unauthorized transactions on their savings account and is requesting a resolution update after previous contact with support."
+  },
+  "aiGeneratedResponse": {
+    "lang": "eng",
+    "subject": "25 to 40 characters email subject",
+    "detailMessage": "400 to 800 characters. Keep individual paragraphs under 200 characters to maintain white space. Place the direct answer or action item in the first 100–150 characters. Do not burry essential information under warm greetings or disclaimer copy.",
+    "shortMessage": "70 to 110 characters, SMS style"
+  }
+}

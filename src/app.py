@@ -19,7 +19,7 @@ from typing import Any
 from src.application.CustomerEnquiryOrchaestrator import CustomerEnquiryOrchestrator
 from src.config import ConfigLoader
 from src.infrastructure import IBMMQClient, IBMMQSettings
-from src.utilities import Logging
+from src.utilities import Logging, ResponseMessageUtility
 
 _PROJECT_FILE = Path(__file__).resolve().parents[1] / "pyproject.toml"
 
@@ -79,7 +79,9 @@ def main() -> None:
     display_project_information()
 
     client = IBMMQClient(IBMMQSettings.from_config())
-    orchestrator = CustomerEnquiryOrchestrator()
+    orchestrator = CustomerEnquiryOrchestrator(
+        response_message_utility=ResponseMessageUtility(client)
+    )
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="enquiry-worker")
     stop_event = Event()
 
@@ -95,10 +97,11 @@ def main() -> None:
 
     try:
         client.start_consumer(lambda **kwargs: dispatch_message(executor, orchestrator, **kwargs))
-        Logging.info("Customer enquiry triage service is consuming IBM MQ requests.")
+        Logging.info("[CEP] Customer enquiry triage service is consuming IBM MQ requests.")
+        Logging.info("[CEP] Waiting for the message ...")
         stop_event.wait()
     except (KeyboardInterrupt, EOFError):
-        Logging.info("Customer enquiry triage service is stopping.")
+        Logging.info("[CEP] Customer enquiry triage service is stopping.")
     finally:
         client.close()
         executor.shutdown(wait=True)
@@ -124,12 +127,12 @@ def display_project_information(project_file: Path = _PROJECT_FILE) -> None:
 
     project = configuration.get("project")
     if not isinstance(project, dict):
-        raise ValueError(f"Missing [project] section in {project_file}")
+        raise ValueError(f"[ERR-01] Missing [project] section in {project_file}")
 
     version = project.get("version")
     description = project.get("description")
     if not isinstance(version, str) or not isinstance(description, str):
-        raise ValueError(f"Missing project version or description in {project_file}")
+        raise ValueError(f"[ERR-02] Missing project version or description in {project_file}")
 
     print(f"Version: {version}")
     print(f"Description: {description}")

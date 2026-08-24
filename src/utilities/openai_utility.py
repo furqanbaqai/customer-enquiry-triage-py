@@ -37,7 +37,7 @@ class OpenAIUtility:
     def call(self, prompt: str) -> str:
         """Send ``prompt`` to the configured endpoint and return its text response."""
         if not prompt.strip():
-            raise ValueError("The OpenAI prompt must not be blank")
+            raise ValueError("[ERR-18] The OpenAI prompt must not be blank")
         started_at = perf_counter()
 
         endpoint_url = self._required_string("OFTL_OPENAI_URL")
@@ -84,7 +84,7 @@ class OpenAIUtility:
 
         response_content = response.choices[0].message.content
         if response_content is None:
-            raise RuntimeError("The OpenAI endpoint returned no text content")
+            raise RuntimeError("[ERR-19] The OpenAI endpoint returned no text content")
         self._log_response_metrics(
             started_at,
             getattr(response, "id", None),
@@ -114,41 +114,45 @@ class OpenAIUtility:
             f"response_characters={len(content)}"
         )
 
-    def callJson(self, prompt: str) -> dict[object, object]:
+    def callJson(self, prompt: str) -> dict[str, object]:
         """Send ``prompt`` and return the JSON response as a dictionary."""
         response = json.loads(self.call(prompt))
         if not isinstance(response, dict):
-            raise RuntimeError("The OpenAI endpoint returned JSON that is not an object")
+            raise RuntimeError("[ERR-20] The OpenAI endpoint returned JSON that is not an object")
         return response
 
     def _required_string(self, key: str) -> str:
         value = self._configuration_getter(key, None)
         if not isinstance(value, str) or not value.strip():
-            raise OpenAIConfigurationError(f"Required OpenAI configuration is missing: {key}")
+            raise OpenAIConfigurationError(
+                f"[ERR-21] Required OpenAI configuration is missing: {key}"
+            )
         return value.strip()
 
     def _float_setting(self, key: str, default: float, minimum: float, maximum: float) -> float:
         value = self._configuration_getter(key, default)
         if not isinstance(value, (str, int, float)):
-            raise OpenAIConfigurationError(f"{key} must be a number")
+            raise OpenAIConfigurationError(f"[ERR-22] {key} must be a number")
         try:
             parsed = float(value)
         except (TypeError, ValueError) as error:
-            raise OpenAIConfigurationError(f"{key} must be a number") from error
+            raise OpenAIConfigurationError(f"[ERR-22] {key} must be a number") from error
         if not minimum <= parsed <= maximum:
-            raise OpenAIConfigurationError(f"{key} must be between {minimum} and {maximum}")
+            raise OpenAIConfigurationError(
+                f"[ERR-23] {key} must be between {minimum} and {maximum}"
+            )
         return parsed
 
     def _int_setting(self, key: str, default: int, minimum: int) -> int:
         value = self._configuration_getter(key, default)
         if not isinstance(value, (str, int)):
-            raise OpenAIConfigurationError(f"{key} must be an integer")
+            raise OpenAIConfigurationError(f"[ERR-24] {key} must be an integer")
         try:
             parsed = int(value)
         except (TypeError, ValueError) as error:
-            raise OpenAIConfigurationError(f"{key} must be an integer") from error
+            raise OpenAIConfigurationError(f"[ERR-24] {key} must be an integer") from error
         if parsed < minimum:
-            raise OpenAIConfigurationError(f"{key} must be at least {minimum}")
+            raise OpenAIConfigurationError(f"[ERR-25] {key} must be at least {minimum}")
         return parsed
 
     def _bool_setting(self, key: str, default: bool) -> bool:
@@ -157,7 +161,7 @@ class OpenAIUtility:
             return value
         if isinstance(value, str) and value.lower() in {"true", "false"}:
             return value.lower() == "true"
-        raise OpenAIConfigurationError(f"{key} must be true or false")
+        raise OpenAIConfigurationError(f"[ERR-26] {key} must be true or false")
 
     @classmethod
     def _base_url(cls, endpoint_url: str) -> str:

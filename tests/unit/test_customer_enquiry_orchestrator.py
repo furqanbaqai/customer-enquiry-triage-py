@@ -18,6 +18,7 @@ def valid_enquiry() -> dict[str, object]:
         "lastName": "Lovelace",
         "emailAddress": "ada@example.com",
         "message": "Please help with my enquiry.",
+        "category": "Retail Accounts",
         "receivedAt": "2026-08-19T10:01:00Z",
     }
 
@@ -40,12 +41,17 @@ def test_parse_enquiry_message_rejects_schema_violation() -> None:
 
 def test_process_enquiry_sends_rendered_configured_prompt() -> None:
     enquiry = valid_enquiry()
-    meta = enquiry["meta"]
-    assert isinstance(meta, dict)
     prompt_loader = MagicMock()
     prompt_loader.load_configured_prompt.return_value = "rendered prompt"
-    prompt_sender = MagicMock()
-    orchestrator = CustomerEnquiryOrchestrator(prompt_loader, prompt_sender)
+    prompt_sender = MagicMock(return_value={})
+    language_detector = MagicMock(return_value="eng")
+    response_message_utility = MagicMock()
+    orchestrator = CustomerEnquiryOrchestrator(
+        prompt_loader,
+        prompt_sender,
+        language_detector=language_detector,
+        response_message_utility=response_message_utility,
+    )
 
     orchestrator.process_enquiry(json.dumps(enquiry).encode())
 
@@ -53,10 +59,11 @@ def test_process_enquiry_sends_rendered_configured_prompt() -> None:
         "OFTL_AI_PROMPT_1",
         {
             "MESSAGE": enquiry["message"],
-            "FIRST_NAME": enquiry["firstName"],
-            "LAST_NAME": enquiry["lastName"],
-            "CHANNEL": meta["channel"],
-            "REFERENCE_NUMBER": meta["refNumber"],
+            "CATEGORY": enquiry["category"],
         },
     )
+    language_detector.assert_called_once_with(enquiry["message"])
     prompt_sender.assert_called_once_with("rendered prompt")
+    response_message_utility.send_response_message.assert_called_once_with(
+        enquiry, {}, None, "0000", "Success"
+    )

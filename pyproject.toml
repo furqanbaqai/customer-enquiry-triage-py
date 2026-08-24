@@ -8,6 +8,7 @@ dependencies = [
     "environs>=15.1.0",
     "ibmmq>=2.1.0",
     "jsonschema>=4.23.0",
+    "lingua-language-detector>=2.2.0",
     "openai>=3.3.1",
     "python-dotenv>=1.2.3",
     "sqlalchemy>=2.0.52",
