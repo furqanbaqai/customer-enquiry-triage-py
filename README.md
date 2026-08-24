@@ -51,6 +51,7 @@ uv run customer-enquiry-triage
 | `OFTL_OPENAI_TEMPERATURE` | No | `0.1` |
 | `OFTL_OPENAI_TOP_P` | No | `0.9` |
 | `OFTL_OPENAI_MAX_TOKENS` | No | `200` |
+| `OFTL_OPENAI_TIMEOUT` | No | `300` seconds |
 | `OFTL_OPENAI_STREAM` | No | `False` |
 | `OFTL_AI_PROMPT_1` | Yes | `prompts/customer_enquiry_triage.md` |
 | `OFTL_IMQ_QMGR` | Yes | No default |

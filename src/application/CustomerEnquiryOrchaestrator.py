@@ -6,6 +6,7 @@ Reference: https://github.com/furqanbaqai/customer-enquiry-triage-py
 """
 
 import json
+import traceback
 from collections.abc import Callable
 from importlib.resources import files
 
@@ -85,8 +86,18 @@ class CustomerEnquiryOrchestrator:
             # Preserve the specific validation error raised while parsing.
             raise
         except Exception as error:
+            exception_type = type(error).__name__
+            stack_trace = traceback.format_exc()
+            Logging.error(
+                "[CEP] Unexpected error while processing enquiry "
+                "(type=%s, message=%s). Stack trace:\n%s",
+                exception_type,
+                str(error),
+                stack_trace,
+            )
             raise RuntimeError(
-                "An unexpected error occurred while processing the enquiry: %s", str(error)
+                "An unexpected error occurred while processing the enquiry "
+                f"({exception_type}): {str(error)}"
             ) from error
 
     def _generate_prompt(self, enquiry: dict[str, object], promptConfigKey: str) -> str:

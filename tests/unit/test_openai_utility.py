@@ -35,6 +35,7 @@ def test_call_uses_environment_defaults_with_openai_sdk() -> None:
         top_p=0.9,
         max_tokens=200,
         stream=False,
+        timeout=300,
     )
 
 
@@ -45,6 +46,7 @@ def test_call_loads_overridden_sdk_parameters() -> None:
         "OFTL_OPENAI_TEMPERATURE": "0.4",
         "OFTL_OPENAI_TOP_P": "0.7",
         "OFTL_OPENAI_MAX_TOKENS": "500",
+        "OFTL_OPENAI_TIMEOUT": "120",
         "OFTL_OPENAI_STREAM": "false",
     }
     client = MagicMock()
@@ -56,7 +58,20 @@ def test_call_loads_overridden_sdk_parameters() -> None:
     assert client.chat.completions.create.call_args.kwargs["temperature"] == 0.4
     assert client.chat.completions.create.call_args.kwargs["top_p"] == 0.7
     assert client.chat.completions.create.call_args.kwargs["max_tokens"] == 500
+    assert client.chat.completions.create.call_args.kwargs["timeout"] == 120
     assert client.chat.completions.create.call_args.kwargs["stream"] is False
+
+
+def test_call_rejects_invalid_timeout() -> None:
+    configuration = {
+        "OFTL_OPENAI_URL": "https://example.com/v1",
+        "OFTL_OPENAI_APITOKEN": "secret-token",
+        "OFTL_OPENAI_TIMEOUT": "0",
+    }
+    utility = OpenAIUtility(configuration.get, MagicMock())
+
+    with pytest.raises(OpenAIConfigurationError, match="OFTL_OPENAI_TIMEOUT must be at least 1"):
+        utility.call("Classify this enquiry")
 
 
 def test_call_requires_endpoint_and_token() -> None:

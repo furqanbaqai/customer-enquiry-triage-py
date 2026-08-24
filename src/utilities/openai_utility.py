@@ -45,6 +45,7 @@ class OpenAIUtility:
         temperature = self._float_setting("OFTL_OPENAI_TEMPERATURE", 0.1, 0.0, 2.0)
         top_p = self._float_setting("OFTL_OPENAI_TOP_P", 0.9, 0.0, 1.0)
         max_tokens = self._int_setting("OFTL_OPENAI_MAX_TOKENS", 200, minimum=1)
+        timeout = self._int_setting("OFTL_OPENAI_TIMEOUT", 300, minimum=1)
         stream = self._bool_setting("OFTL_OPENAI_STREAM", False)
 
         client = self._client_factory(api_key=api_token, base_url=self._base_url(endpoint_url))
@@ -56,6 +57,7 @@ class OpenAIUtility:
                 top_p=top_p,
                 max_tokens=max_tokens,
                 stream=True,
+                timeout=timeout,
             )
             content_parts: list[str] = []
             response_id = None
@@ -77,19 +79,20 @@ class OpenAIUtility:
             top_p=top_p,
             max_tokens=max_tokens,
             stream=False,
+            timeout=timeout,
         )
 
-        content = response.choices[0].message.content
-        if content is None:
+        response_content = response.choices[0].message.content
+        if response_content is None:
             raise RuntimeError("The OpenAI endpoint returned no text content")
         self._log_response_metrics(
             started_at,
             getattr(response, "id", None),
             getattr(response, "model", self._DEFAULT_MODEL),
             getattr(response, "usage", None),
-            content,
+            response_content,
         )
-        return content
+        return response_content
 
     @staticmethod
     def _log_response_metrics(
