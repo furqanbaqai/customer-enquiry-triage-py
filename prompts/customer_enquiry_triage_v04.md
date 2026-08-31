@@ -42,7 +42,7 @@ Other | Others: Use when the incoming message cannot be reliably mapped to a spe
 ### CLASSIFICATION RULES
 1. type: "Complaint" (problems, errors, delays, loss, dissatisfaction) or "Enquiry" (info, status, limits). Default to "Enquiry" if unsure.
 2. product: Evaluate the "Message Text" prodvided as an input and match the provided "Inquiry Product" to ensure that it matches with the message. The Inquiry Product MUST be an exact string match from the ALLOWED PRODUCTS list above and should corresponds with the message text. Do not invent products.
-3. category: Evaluate the message and map it with the category as defined in the ALLOWED PRODUCTS LIST (Exaple Accounts, Deposits, Finance and etc)
+3. category: Evaluate the message and map it with the category as defined in the ALLOWED PRODUCTS LIST (Exaple Accounts, Deposits, Finance, Cards and etc)
 4. product_code: Product code as defined in the ALLOWED PRODUCT LIST. The code will start with format SIB-RET/CORP-NNN
 5. segment: Product's segment, map it from ALLOWED PRODUCT LIST. Example Retail, Corporate 
 5. priority: "High" (fraud, lost/stolen, financial loss, locked, urgent, legal) or "Normal" (routine, info).

@@ -79,6 +79,7 @@ class CustomerEnquiryOrchestrator:
         Process an incoming customer enquiry message.
         :param message: The raw message bytes received from the input queue.
         """
+        _errHandled = False
         try:
             Logging.info(
                 "[CEP] Parsing incoming customer enquiry message (%d bytes).", len(message)
@@ -112,11 +113,27 @@ class CustomerEnquiryOrchestrator:
             Logging.info("[CEP] Message Processing completed.")
             Logging.info("[CEP] Waiting for other message..")
         except ValidationError as error:
+            self._response_message_utility.send_response_message(
+                enquiry_message,
+                None,
+                None,
+                "8100",
+                "[ERR-05] The enquiry message does not match the request schema",
+            )
+            _errHandled = True
             raise ValueError(
                 "[ERR-05] The enquiry message does not match the request schema"
             ) from error
         except ValueError:
             # Preserve the specific validation error raised while parsing.
+            self._response_message_utility.send_response_message(
+                enquiry_message,
+                None,
+                None,
+                "8101",
+                "[ERR-05] Value Error occurred while processing the enquiry message",
+            )
+            _errHandled = True
             raise
         except Exception as error:
             exception_type = type(error).__name__
@@ -128,6 +145,14 @@ class CustomerEnquiryOrchestrator:
                 str(error),
                 stack_trace,
             )
+            if not _errHandled:
+                self._response_message_utility.send_response_message(
+                    enquiry_message,
+                    None,
+                    None,
+                    "9999",
+                    "[ERR-08] An unexpected error occurred while processing the enquiry",
+                )
             raise RuntimeError(
                 "[ERR-08] An unexpected error occurred while processing the enquiry "
                 f"({exception_type}): {str(error)}"
