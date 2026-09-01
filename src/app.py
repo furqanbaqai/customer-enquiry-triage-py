@@ -102,6 +102,11 @@ def main() -> None:
         stop_event.wait()
     except (KeyboardInterrupt, EOFError):
         Logging.info("[CEP] Customer enquiry triage service is stopping.")
+        exit(1)
+    except Exception as exception:
+        # Logging.error("[CEP] Customer enquiry triage service encountered an error: %s", exception)
+        print(f"[CEP] Customer enquiry triage service encountered an error: {exception}")
+        exit(99)
     finally:
         client.close()
         executor.shutdown(wait=True)
