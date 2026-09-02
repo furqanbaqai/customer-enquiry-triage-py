@@ -39,6 +39,7 @@ class CustomerEnquiryOrchestrator:
         prompt_loader: PromptLoader | None = None,
         prompt_sender: Callable[[str], dict[str, object]] | None = None,
         prompt_configuration_key: str = "OFTL_AI_PROMPT_1",
+        response_prompt_configuration_key: str = "OFTL_AI_PROMPT_2",
         language_detector: Callable[[str], str] = LanguageValidator.detect_language,
         response_message_utility: ResponseMessageUtility | None = None,
     ) -> None:
@@ -46,6 +47,7 @@ class CustomerEnquiryOrchestrator:
         self._prompt_loader = prompt_loader or PromptLoader()
         self._func_OpenaiUtil_callJSON = prompt_sender or OpenAIUtility().callJson
         self._prompt_configuration_key = prompt_configuration_key
+        self._response_prompt_configuration_key = response_prompt_configuration_key
         self._language_detector = language_detector
         self._response_message_utility = response_message_utility
 
@@ -85,28 +87,27 @@ class CustomerEnquiryOrchestrator:
                 "[CEP] Parsing incoming customer enquiry message (%d bytes).", len(message)
             )
             enquiry_message = self.parse_enquiry_message(message)
-
             enquiry_text = enquiry_message["message"]
             if not isinstance(enquiry_text, str):
                 raise ValueError("[ERR-07] The enquiry message text must be a string")
             language_code = self._language_detector(enquiry_text).upper()
-            # TODO! Validate the language code against a list of supported languages.
             Logging.info("[CEP] Detected customer enquiry language: %s", language_code)
+            # TODO! Validate the language code against a list of supported languages.
+            Logging.info("[CEP] Initiating AI assessment for customer enquiry message.")
+            resp_aiAssesment = self._getAIAssesment(enquiry_message)
+            emotion_type = resp_aiAssesment["emotionalType"]
+            if not isinstance(emotion_type, str):
+                raise ValueError("[ERR-40] The AI assessment emotional type must be a string")
 
-            Logging.info("[CEP] Loading Prompt from %s.", self._prompt_configuration_key)
-            prompt = self._generate_prompt(enquiry_message, self._prompt_configuration_key)
-
-            Logging.info("[CEP] Customer enquiry submitted for AI classification.")
-            resp_aiAss = self._func_OpenaiUtil_callJSON(prompt)
-            Logging.info("[CEP] AI classification completed successfully.")
-            Logging.debug("[CEP] AI classification result: %s", json.dumps(resp_aiAss))
+            Logging.info("[CEP] Initiating AI response generation for customer enquiry message.")
+            resp_aiResponseMessage = self._getAIResponseMessage(enquiry_message, emotion_type)
 
             if self._response_message_utility is None:
                 raise RuntimeError("[ERR-39] The response message utility is not configured")
             self._response_message_utility.send_response_message(
                 enquiry_message,
-                resp_aiAss,
-                None,
+                resp_aiAssesment,
+                resp_aiResponseMessage,
                 "0000",
                 "Success",
             )
@@ -158,6 +159,37 @@ class CustomerEnquiryOrchestrator:
                 "[ERR-08] An unexpected error occurred while processing the enquiry "
                 f"({exception_type}): {str(error)}"
             ) from error
+
+    def _getAIAssesment(self, enquiry_message: dict[str, object]) -> dict[str, object]:
+        """Generate an AI assessment for the customer enquiry."""
+        Logging.info("[CEP] Loading Prompt from %s.", self._prompt_configuration_key)
+        prompt = self._generate_prompt(enquiry_message, self._prompt_configuration_key)
+        Logging.debug("[CEP] Generated prompt for AI response: %s", prompt)
+        Logging.info("[CEP] Customer enquiry submitted for AI classification.")
+        resp_aiAssesment = self._func_OpenaiUtil_callJSON(prompt)
+        Logging.info("[CEP] AI classification completed successfully.")
+        Logging.debug("[CEP] AI classification result: %s", json.dumps(resp_aiAssesment))
+        return resp_aiAssesment
+
+    def _getAIResponseMessage(
+        self, enquiry_message: dict[str, object], emotionType: str
+    ) -> dict[str, object]:
+        """Generate an emotion-aware response for the customer enquiry."""
+        Logging.info("[CEP] Loading Prompt from %s.", self._response_prompt_configuration_key)
+        prompt_variables = {
+            "INPUT_MESSAGE": enquiry_message["message"],
+            "INPUT_EMOTION": emotionType,
+            "PRODUCT_INFORMATION": enquiry_message["category"],
+        }
+        prompt = self._prompt_loader.load_configured_prompt(
+            self._response_prompt_configuration_key, prompt_variables
+        )
+        Logging.debug("[CEP] Generated prompt for AI response: %s", prompt)
+        Logging.info("[CEP] Customer enquiry submitted for AI response generation.")
+        resp_aiResponseMessage = self._func_OpenaiUtil_callJSON(prompt)
+        Logging.info("[CEP] AI response generation completed successfully.")
+        Logging.debug("[CEP] AI generated response: %s", json.dumps(resp_aiResponseMessage))
+        return resp_aiResponseMessage
 
     def _generate_prompt(self, enquiry: dict[str, object], promptConfigKey: str) -> str:
         """Generate a prompt for AI classification based on the enquiry data."""

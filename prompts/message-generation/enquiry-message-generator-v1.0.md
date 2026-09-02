@@ -49,14 +49,14 @@ Generate ONLY the raw JSON output for the following input. Do not output anythin
 
 <input_data>
 <Customer_Input_Message>
-{{input_message}}
+{{INPUT_MESSAGE}}
 </Customer_Input_Message>
 
 <Customer_Message_Emotion>
-{{input_emotion}}
+{{INPUT_EMOTION}}
 </Customer_Message_Emotion>
 
 <Product_Information>
-{{product_information}}
+{{PRODUCT_INFORMATION}}
 </Product_Information>
 </input_data>

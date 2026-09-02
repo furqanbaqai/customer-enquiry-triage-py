@@ -43,7 +43,19 @@ def test_process_enquiry_sends_rendered_configured_prompt() -> None:
     enquiry = valid_enquiry()
     prompt_loader = MagicMock()
     prompt_loader.load_configured_prompt.return_value = "rendered prompt"
-    prompt_sender = MagicMock(return_value={})
+    assessment = {"emotionalType": "Calm"}
+    generated_response = {
+        "greeting": "<p>Dear Valued Customer,</p>",
+        "body": "<p>Thank you for your inquiry.</p>",
+        "closing": "<p>We are here to help.</p>",
+        "signature": "Best regards,<br><b>Customer Support Team</b>",
+        "infoAvail": False,
+    }
+    prompt_sender = MagicMock(side_effect=[assessment, generated_response])
+    prompt_loader.load_configured_prompt.side_effect = [
+        "rendered assessment prompt",
+        "rendered response prompt",
+    ]
     language_detector = MagicMock(return_value="eng")
     response_message_utility = MagicMock()
     orchestrator = CustomerEnquiryOrchestrator(
@@ -55,15 +67,22 @@ def test_process_enquiry_sends_rendered_configured_prompt() -> None:
 
     orchestrator.process_enquiry(json.dumps(enquiry).encode())
 
-    prompt_loader.load_configured_prompt.assert_called_once_with(
-        "OFTL_AI_PROMPT_1",
-        {
+    assert prompt_loader.load_configured_prompt.call_args_list == [
+        (("OFTL_AI_PROMPT_1", {
             "MESSAGE": enquiry["message"],
             "CATEGORY": enquiry["category"],
-        },
-    )
+        }),),
+        (("OFTL_AI_PROMPT_2", {
+            "INPUT_MESSAGE": enquiry["message"],
+            "INPUT_EMOTION": "Calm",
+            "PRODUCT_INFORMATION": enquiry["category"],
+        }),),
+    ]
     language_detector.assert_called_once_with(enquiry["message"])
-    prompt_sender.assert_called_once_with("rendered prompt")
+    assert prompt_sender.call_args_list == [
+        (("rendered assessment prompt",),),
+        (("rendered response prompt",),),
+    ]
     response_message_utility.send_response_message.assert_called_once_with(
-        enquiry, {}, None, "0000", "Success"
+        enquiry, assessment, generated_response, "0000", "Success"
     )
