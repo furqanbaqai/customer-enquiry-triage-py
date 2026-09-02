@@ -1,0 +1,19 @@
+{
+  "product_code": "SIB-CORP-068",
+  "product_name": "Reporting MT 940",
+  "segment": "Corporate",
+  "description": "SWIFT MT940 account-statement reporting service.",
+  "eligibility": [
+    "Multinationals",
+    "Subsidiaries",
+    "Treasury operations",
+    "Corporates requiring SWIFT reporting"
+  ],
+  "features": [
+    "Daily balances",
+    "Transaction visibility",
+    "Liquidity overview",
+    "Worldwide bank/owner reporting",
+    "SWIFT MT940 reporting"
+  ]
+}

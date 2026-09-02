@@ -1,0 +1,14 @@
+{
+  "product_code": "SIB-CORP-083",
+  "product_name": "Letters of Credit Advising",
+  "segment": "Corporate",
+  "description": "SIB advises incoming export LCs to corporate exporter beneficiaries.",
+  "eligibility": [
+    "Exporters receiving documentary credits"
+  ],
+  "features": [
+    "Incoming export LC advising",
+    "Documentary export support",
+    "Correspondent-network reach"
+  ]
+}

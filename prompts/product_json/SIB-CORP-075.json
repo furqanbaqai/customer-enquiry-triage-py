@@ -1,0 +1,14 @@
+{
+  "product_code": "SIB-CORP-075",
+  "product_name": "Bulk Cheque Printing",
+  "segment": "Corporate",
+  "description": "Customized corporate cheque-printing service.",
+  "eligibility": [
+    "Corporates with cheque-intensive payment operations"
+  ],
+  "features": [
+    "Customized company logo/design",
+    "Bulk cheque printing",
+    "Optional customer in-house printing"
+  ]
+}

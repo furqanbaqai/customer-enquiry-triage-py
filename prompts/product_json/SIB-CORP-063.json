@@ -1,0 +1,17 @@
+{
+  "product_code": "SIB-CORP-063",
+  "product_name": "Current Account",
+  "segment": "Corporate",
+  "description": "Transactional account for everyday business banking, payments, deposits and withdrawals.",
+  "eligibility": [
+    "Companies with valid trade licence",
+    "AED 15,000 published minimum balance",
+    "Corporate relationship terms may vary"
+  ],
+  "features": [
+    "Unlimited deposits",
+    "Unlimited withdrawals",
+    "Cheque/account functionality",
+    "Digital banking"
+  ]
+}

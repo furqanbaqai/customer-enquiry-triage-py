@@ -1,0 +1,22 @@
+{
+  "product_code": "SIB-RET-039",
+  "product_name": "Sharjah Co-op Card",
+  "segment": "Retail",
+  "description": "Co-branded prepaid card for Sharjah Cooperative Society shareholders.",
+  "eligibility": [
+    "Sharjah Cooperative Society shareholders",
+    "General prepaid eligibility applies",
+    "General prepaid documentation applies"
+  ],
+  "features": [
+    "No annual fee",
+    "One free supplementary card",
+    "No minimum balance",
+    "No monthly charge",
+    "ATM usage",
+    "In-store usage",
+    "Online usage",
+    "Digital reload",
+    "Mastercard Priceless"
+  ]
+}

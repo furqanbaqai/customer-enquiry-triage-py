@@ -1,0 +1,16 @@
+{
+  "product_code": "SIB-CORP-089",
+  "product_name": "Performance Bond",
+  "segment": "Corporate",
+  "description": "Guarantee supporting contractual performance obligations.",
+  "eligibility": [
+    "Contractors",
+    "Suppliers"
+  ],
+  "features": [
+    "Bank-backed contractual assurance",
+    "Local availability",
+    "International availability",
+    "Performance guarantee"
+  ]
+}

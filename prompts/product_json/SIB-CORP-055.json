@@ -1,0 +1,20 @@
+{
+  "product_code": "SIB-CORP-055",
+  "product_name": "POS - Point of Sale",
+  "segment": "Corporate",
+  "description": "Android-based merchant POS terminal for physical card and digital-payment acceptance.",
+  "eligibility": [
+    "Corporate/business merchants",
+    "SIB Pay merchant onboarding required"
+  ],
+  "features": [
+    "High-speed connectivity",
+    "Plug-and-play",
+    "Portable terminal",
+    "EMV",
+    "NFC",
+    "QR payments",
+    "Mobile-wallet acceptance",
+    "Secure payment standards"
+  ]
+}

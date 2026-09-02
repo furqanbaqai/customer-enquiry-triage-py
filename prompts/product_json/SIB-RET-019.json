@@ -1,0 +1,20 @@
+{
+  "product_code": "SIB-RET-019",
+  "product_name": "Medical Finance",
+  "segment": "Retail",
+  "description": "Named Personal Finance variant for medical treatment. Medical treatment is classified by SIB as an eligible Service Ijarah purpose.",
+  "eligibility": [
+    "Minimum salary AED 5,000",
+    "Salary transfer to SIB",
+    "Approved employer",
+    "AECB check required",
+    "Age 21 or above",
+    "Applicable maturity-age limits"
+  ],
+  "features": [
+    "Medical-treatment financing",
+    "Service Ijarah structure",
+    "Personal Finance benefits apply",
+    "Personal Finance limits apply"
+  ]
+}

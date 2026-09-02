@@ -1,0 +1,15 @@
+{
+  "product_code": "SIB-CORP-067",
+  "product_name": "Shortfall Protection",
+  "segment": "Corporate",
+  "description": "Automatically transfers funds from another account when an operating account has insufficient balance for a payment or cheque.",
+  "eligibility": [
+    "Corporate customers with multiple eligible SIB accounts"
+  ],
+  "features": [
+    "Automated liquidity management",
+    "Automatic funds transfer",
+    "Helps prevent account shortfalls",
+    "Helps prevent payment failure"
+  ]
+}

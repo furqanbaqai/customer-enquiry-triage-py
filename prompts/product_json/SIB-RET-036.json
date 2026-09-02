@@ -1,0 +1,21 @@
+{
+  "product_code": "SIB-RET-036",
+  "product_name": "Debit Card",
+  "segment": "Retail",
+  "description": "Contactless debit card linked to an SIB account for everyday purchases, ATM withdrawals and online transactions.",
+  "eligibility": [
+    "Eligible SIB account holders",
+    "Relevant account requirements apply",
+    "KYC requirements apply"
+  ],
+  "features": [
+    "27+ selected airport lounges subject to terms",
+    "Merchant offers",
+    "24/7 phone banking",
+    "Online banking",
+    "Secure EMV usage",
+    "Online transactions",
+    "Utility payments",
+    "Digital-wallet support"
+  ]
+}

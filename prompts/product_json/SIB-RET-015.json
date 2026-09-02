@@ -1,0 +1,24 @@
+{
+  "product_code": "SIB-RET-015",
+  "product_name": "Services Finance",
+  "segment": "Retail",
+  "description": "Ijarah-based Personal Finance for services. SIB lists holiday packages/air tickets, Umrah, education, medical treatment, annual rent for house/flat/office/shop, and weddings/events as eligible service purposes.",
+  "eligibility": [
+    "Minimum salary AED 5,000",
+    "Salary transfer to SIB",
+    "Approved employer",
+    "AECB check required",
+    "Age 21 or above",
+    "Applicable maturity-age limits"
+  ],
+  "features": [
+    "Service Ijarah structure",
+    "Education financing",
+    "Travel financing",
+    "Umrah financing",
+    "Healthcare financing",
+    "Rent financing",
+    "Wedding/event financing",
+    "Personal Finance campaign terms apply"
+  ]
+}

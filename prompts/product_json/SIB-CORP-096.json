@@ -1,0 +1,17 @@
+{
+  "product_code": "SIB-CORP-096",
+  "product_name": "Wakala Collections Murabaha",
+  "segment": "Corporate",
+  "description": "Import financing designed to improve cash flow where collection/import documentation requires a Wakala/Murabaha solution.",
+  "eligibility": [
+    "Importing companies with eligible collection transactions",
+    "Trading companies with eligible collection transactions"
+  ],
+  "features": [
+    "Wakala structure",
+    "Murabaha structure",
+    "Bridges import payment and resale proceeds",
+    "Supports local supplier transactions",
+    "Supports global supplier transactions"
+  ]
+}

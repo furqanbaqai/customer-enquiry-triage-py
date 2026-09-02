@@ -1,0 +1,21 @@
+{
+  "product_code": "SIB-RET-021",
+  "product_name": "Travel Finance",
+  "segment": "Retail",
+  "description": "Named Personal Finance variant for travel; travel/holiday packages and air tickets are eligible service purposes under the Service Ijarah structure.",
+  "eligibility": [
+    "Minimum salary AED 5,000",
+    "Salary transfer to SIB",
+    "Approved employer",
+    "AECB check required",
+    "Age 21 or above",
+    "Applicable maturity-age limits"
+  ],
+  "features": [
+    "Travel-cost financing",
+    "Holiday package financing",
+    "Air-ticket financing",
+    "Instalment payments",
+    "Service Ijarah structure"
+  ]
+}

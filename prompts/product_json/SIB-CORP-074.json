@@ -1,0 +1,18 @@
+{
+  "product_code": "SIB-CORP-074",
+  "product_name": "Host to Host",
+  "segment": "Corporate",
+  "description": "Direct ERP-to-SIB connectivity for automated banking file exchange.",
+  "eligibility": [
+    "Large corporates requiring automated banking integration",
+    "High-volume corporates requiring automated banking integration"
+  ],
+  "features": [
+    "ERP-to-SIB connectivity",
+    "Payments",
+    "Receipt information",
+    "Account verification",
+    "Transaction reporting",
+    "ERP integration"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "product_code": "SIB-CORP-073",
+  "product_name": "Payroll / WPS and Non-WPS",
+  "segment": "Corporate",
+  "description": "Electronic salary-processing solution supporting UAE WPS and non-WPS salary payments.",
+  "eligibility": [
+    "UAE employers processing employee payroll"
+  ],
+  "features": [
+    "Domestic salary payments",
+    "Cross-border salary payments",
+    "Systematic disbursement",
+    "WPS compliance",
+    "Non-WPS salary processing",
+    "Reduced cash handling"
+  ]
+}

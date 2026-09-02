@@ -1,0 +1,22 @@
+{
+  "product_code": "SIB-RET-020",
+  "product_name": "Rent Finance",
+  "segment": "Retail",
+  "description": "Named Personal Finance variant for annual rent. House/flat rent is defined by SIB as an eligible Service Ijarah purpose; the public page also includes office/shop rent.",
+  "eligibility": [
+    "Minimum salary AED 5,000",
+    "Salary transfer to SIB",
+    "Approved employer",
+    "AECB check required",
+    "Age 21 or above",
+    "Applicable maturity-age limits"
+  ],
+  "features": [
+    "Annual rent financing",
+    "Scheduled finance instalments",
+    "House/flat rent support",
+    "Office/shop rent support",
+    "Personal Finance limits apply",
+    "Campaign pricing applies"
+  ]
+}

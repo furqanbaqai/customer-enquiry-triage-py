@@ -1,0 +1,19 @@
+{
+  "product_code": "SIB-CORP-065",
+  "product_name": "Fixed Deposit",
+  "segment": "Corporate",
+  "description": "Sharia-compliant Mudaraba term investment deposit.",
+  "eligibility": [
+    "Corporate customers investing surplus funds",
+    "Corporate-specific minimum to be confirmed with SIB"
+  ],
+  "features": [
+    "1-month period",
+    "3-month period",
+    "6-month period",
+    "9-month period",
+    "12-month period",
+    "Profit distribution",
+    "80% customer / 20% bank Mudaraba profit-sharing ratio"
+  ]
+}

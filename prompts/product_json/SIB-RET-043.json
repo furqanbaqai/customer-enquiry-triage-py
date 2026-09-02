@@ -1,0 +1,19 @@
+{
+  "product_code": "SIB-RET-043",
+  "product_name": "Tamkeen Card",
+  "segment": "Retail",
+  "description": "Co-branded prepaid card for Sharjah Social Empowerment Foundation members receiving financial assistance.",
+  "eligibility": [
+    "Eligible Sharjah Social Empowerment Foundation members receiving financial assistance"
+  ],
+  "features": [
+    "No annual fee",
+    "No minimum balance",
+    "No monthly charge",
+    "ATM/CDM usage",
+    "Retail usage",
+    "Online usage",
+    "Digital loading",
+    "Mastercard Priceless"
+  ]
+}

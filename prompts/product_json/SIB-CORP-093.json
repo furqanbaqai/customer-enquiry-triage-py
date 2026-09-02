@@ -1,0 +1,13 @@
+{
+  "product_code": "SIB-CORP-093",
+  "product_name": "Financial Guarantee",
+  "segment": "Corporate",
+  "description": "Guarantee covering an eligible corporate financial obligation.",
+  "eligibility": [
+    "Corporates requiring eligible financial guarantees"
+  ],
+  "features": [
+    "Tailored bank-backed financial assurance",
+    "Financial obligation guarantee"
+  ]
+}

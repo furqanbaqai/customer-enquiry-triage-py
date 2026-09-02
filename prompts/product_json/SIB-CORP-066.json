@@ -1,0 +1,16 @@
+{
+  "product_code": "SIB-CORP-066",
+  "product_name": "Physical Sweeping",
+  "segment": "Corporate",
+  "description": "Liquidity-management solution moving funds between corporate/group accounts.",
+  "eligibility": [
+    "Companies with multiple eligible accounts",
+    "Groups with multiple eligible accounts"
+  ],
+  "features": [
+    "Optimizes group liquidity",
+    "Consolidates surplus cash",
+    "May reduce financing cost",
+    "Supports working capital"
+  ]
+}

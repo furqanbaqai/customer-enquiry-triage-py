@@ -1,0 +1,25 @@
+{
+  "product_code": "SIB-RET-008",
+  "product_name": "Flexi Long Term Deposit Account",
+  "segment": "Retail",
+  "description": "Multi-currency Investment Wakala deposit offering flexible profit-payment frequencies over longer tenors.",
+  "eligibility": [
+    "Age 21 or above",
+    "Minimum AED 200,000 or USD 50,000",
+    "Original passport required",
+    "Emirates ID required",
+    "Valid UAE residence visa required for expatriates"
+  ],
+  "features": [
+    "24- or 36-month tenor",
+    "Minimum AED 200,000 or USD 50,000",
+    "Maximum AED 100 million or USD equivalent",
+    "Monthly profit option",
+    "Quarterly profit option",
+    "Semi-annual profit option",
+    "Annual profit option",
+    "Profit at maturity option",
+    "Up to 70% finance against deposit",
+    "Expected rates shown up to 4.80% p.a."
+  ]
+}

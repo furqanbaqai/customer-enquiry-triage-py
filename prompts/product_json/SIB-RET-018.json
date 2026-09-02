@@ -1,0 +1,20 @@
+{
+  "product_code": "SIB-RET-018",
+  "product_name": "Takeover Liability",
+  "segment": "Retail",
+  "description": "Liability-buyout solution under which SIB takes over liabilities from another bank or institution and consolidates them into a single finance arrangement. SIB terms state the transaction is executed using Bonds/Commodity Murabaha.",
+  "eligibility": [
+    "Eligible liabilities at other banks/institutions",
+    "Salary transfer to SIB",
+    "Minimum salary AED 5,000",
+    "AECB requirements apply",
+    "Age rules apply"
+  ],
+  "features": [
+    "Consolidates external liabilities",
+    "Single SIB finance arrangement",
+    "Simplifies repayments",
+    "Liability certificate required when applicable",
+    "Bonds/Commodity Murabaha structure"
+  ]
+}

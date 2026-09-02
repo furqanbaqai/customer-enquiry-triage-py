@@ -1,0 +1,14 @@
+{
+  "product_code": "SIB-CORP-081",
+  "product_name": "Shipping Guarantee",
+  "segment": "Corporate",
+  "description": "Importer trade solution supporting release of goods under eligible documentary transactions.",
+  "eligibility": [
+    "Corporate importers with qualifying transactions"
+  ],
+  "features": [
+    "Supports release of imported goods",
+    "Integrated with LC/import processing",
+    "Dedicated application process"
+  ]
+}

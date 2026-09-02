@@ -1,0 +1,19 @@
+{
+  "product_code": "SIB-RET-044",
+  "product_name": "Joud Card",
+  "segment": "Retail",
+  "description": "Co-branded prepaid card for Sharjah Charity International beneficiaries receiving monthly financial assistance.",
+  "eligibility": [
+    "Eligible Sharjah Charity International beneficiaries"
+  ],
+  "features": [
+    "No annual fee",
+    "No minimum balance",
+    "No monthly charge",
+    "ATM usage",
+    "Retail usage",
+    "Online usage",
+    "Digital loading",
+    "Mastercard Priceless"
+  ]
+}

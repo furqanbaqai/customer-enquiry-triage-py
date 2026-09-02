@@ -1,0 +1,23 @@
+{
+  "product_code": "SIB-RET-010",
+  "product_name": "Fixed Deposit Account",
+  "segment": "Retail",
+  "description": "Sharia-compliant fixed-term deposit based on Mudaraba. SIB states a customer (Rabb al-Mal) / bank (Mudarib) profit-sharing arrangement.",
+  "eligibility": [
+    "Minimum deposit AED 10,000",
+    "Standard account-opening identification requirements apply",
+    "No separate salary condition stated"
+  ],
+  "features": [
+    "1-month tenor",
+    "3-month tenor",
+    "6-month tenor",
+    "9-month tenor",
+    "12-month tenor",
+    "Monthly profit option",
+    "Online/mobile access",
+    "SMS",
+    "Expected 1-month rate around 1.21875% p.a.",
+    "80% customer / 20% bank Mudaraba profit-sharing ratio"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "product_code": "SIB-CORP-058",
+  "product_name": "Integrated Solutions",
+  "segment": "Corporate",
+  "description": "Integrated retail solution combining billing, inventory management and payment acceptance.",
+  "eligibility": [
+    "Retailers",
+    "Corporate merchants requiring integrated POS and billing"
+  ],
+  "features": [
+    "Real-time POS/billing integration",
+    "Faster checkout",
+    "Sales reporting",
+    "Inventory reporting",
+    "Flexible POS deployment"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "product_code": "SIB-RET-049",
+  "product_name": "Easy Cash",
+  "segment": "Retail",
+  "description": "Cash-on-card instalment facility for Smiles and Cashback Covered Card holders, intended for expenses such as rent, school fees or insurance.",
+  "eligibility": [
+    "Eligible Smiles Covered Card holders",
+    "Eligible Cashback Covered Card holders",
+    "Sufficient available card limit",
+    "Satisfactory card status"
+  ],
+  "features": [
+    "Minimum AED 1,000",
+    "Up to 80% of available card limit",
+    "Instalments up to 24 months",
+    "Tenor-based monthly rates",
+    "Administration fees",
+    "Early settlement fee 1% plus VAT"
+  ]
+}

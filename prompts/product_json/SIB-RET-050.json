@@ -1,0 +1,20 @@
+{
+  "product_code": "SIB-RET-050",
+  "product_name": "Balance Transfer",
+  "segment": "Retail",
+  "description": "Facility allowing customers to transfer/consolidate outstanding balances from other credit/covered cards into an SIB Smiles or Cashback Covered Card instalment plan.",
+  "eligibility": [
+    "Eligible Smiles Covered Card holders",
+    "Eligible Cashback Covered Card holders",
+    "Sufficient card limit",
+    "Subject to SIB approval",
+    "Balance-transfer conditions apply"
+  ],
+  "features": [
+    "Up to 80% of card limit",
+    "Instalments up to 24 months",
+    "Tenor-based monthly rates",
+    "Administration fees",
+    "Early settlement fee 1% plus VAT"
+  ]
+}

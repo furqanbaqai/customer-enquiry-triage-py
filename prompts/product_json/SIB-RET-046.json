@@ -1,0 +1,20 @@
+{
+  "product_code": "SIB-RET-046",
+  "product_name": "Family Card",
+  "segment": "Retail",
+  "description": "Co-branded prepaid card used by Sharjah Sharia Court to credit settlements and monthly alimony to the relevant beneficiary.",
+  "eligibility": [
+    "Beneficiaries receiving settlements/monthly alimony through Sharjah Sharia Court",
+    "General prepaid documentation applies"
+  ],
+  "features": [
+    "No annual fee",
+    "No minimum balance",
+    "No monthly charge",
+    "ATM/CDM usage",
+    "Retail usage",
+    "Online usage",
+    "Digital loading",
+    "Mastercard Priceless"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "product_code": "SIB-RET-014",
+  "product_name": "Shares Finance",
+  "segment": "Retail",
+  "description": "Liquidity finance listed under Personal Finance – Liquidity. SIB describes Shares Murabaha as buying shares under Murabaha for a customer requiring liquidity, with liquidation permitted after possession.",
+  "eligibility": [
+    "Minimum salary AED 5,000",
+    "Salary transfer to SIB",
+    "Approved employer",
+    "AECB check required",
+    "Age 21 or above",
+    "End-of-finance age limits apply"
+  ],
+  "features": [
+    "Murabaha-based liquidity solution",
+    "Shares used as underlying Sharia-compliant asset",
+    "Subject to Personal Finance pricing",
+    "Subject to Personal Finance tenor rules",
+    "Subject to approval"
+  ]
+}

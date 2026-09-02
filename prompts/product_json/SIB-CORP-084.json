@@ -1,0 +1,15 @@
+{
+  "product_code": "SIB-CORP-084",
+  "product_name": "Letters of Credit Confirmation",
+  "segment": "Corporate",
+  "description": "Confirmation support for eligible export LCs.",
+  "eligibility": [
+    "Exporters with eligible LCs",
+    "Eligible issuing banks/countries"
+  ],
+  "features": [
+    "Letter of Credit confirmation",
+    "Additional bank payment support",
+    "International trade capability"
+  ]
+}
