@@ -90,6 +90,7 @@ class CustomerEnquiryOrchestrator:
             if not isinstance(enquiry_text, str):
                 raise ValueError("[ERR-07] The enquiry message text must be a string")
             language_code = self._language_detector(enquiry_text).upper()
+            # TODO! Validate the language code against a list of supported languages.
             Logging.info("[CEP] Detected customer enquiry language: %s", language_code)
 
             Logging.info("[CEP] Loading Prompt from %s.", self._prompt_configuration_key)
