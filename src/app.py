@@ -37,6 +37,7 @@ def on_message(orchestrator: CustomerEnquiryOrchestrator | None = None, **kwargs
     payload = message[:message_length] if message is not None else b""
     Logging.info("Received IBM MQ request message (%d bytes).", len(payload))
     try:
+        # TODO! Call Temporal server and push the message to the temporal queue
         (orchestrator or CustomerEnquiryOrchestrator()).process_enquiry(payload)
     except Exception as exception:
         Logging.error("Failed to process customer enquiry: %s", exception)

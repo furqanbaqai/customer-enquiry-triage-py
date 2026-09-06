@@ -4,7 +4,7 @@
 
 This repository is an early proof of concept for a long-running Python service that will consume customer enquiries from IBM MQ, classify them through an OpenAI-compatible endpoint, store tracking and history data in SQL Server, and publish classification results to an output queue.
 
-The currently implemented runtime is narrower: it loads environment configuration, connects to IBM MQ, registers an asynchronous consumer, validates each UTF-8 JSON message against the bundled request schema, logs success or failure, and shuts down gracefully. SQL Server persistence, orchestrated result/backout publishing, duplicate detection, retries, and transaction handling are not implemented yet. The IBM MQ adapter can put an explicitly supplied response on the result queue, but that operation is not yet wired into the orchestration workflow. Do not describe those planned end-to-end capabilities as operational.
+The implemented runtime loads configuration, polls IBM MQ, dispatches enquiries to one application worker, validates requests, detects language, calls an OpenAI-compatible endpoint for assessment and response generation, and publishes a combined result envelope to IBM MQ. SQL Server persistence, backout publishing, duplicate detection, application-managed retries, and transaction handling remain unimplemented. Temporal appears only as a TODO. Result publishing is wired into orchestration, but the failure and shutdown paths have known gaps documented below; do not describe this as a production-ready delivery workflow.
 
 These instructions apply to the entire repository. Keep this file current when the architecture, tooling, or required validation changes.
 
@@ -12,7 +12,7 @@ These instructions apply to the entire repository. Keep this file current when t
 
 - `src/app.py`: application entry point and composition root. Construct and connect dependencies here; keep business rules out of it.
 - `src/__main__.py`: support for `python -m src`.
-- `src/application/CustomerEnquiryOrchaestrator.py`: current orchestration skeleton. It parses and validates request messages; the remaining workflow is marked TODO. Preserve the existing filename spelling unless a deliberate rename updates every import.
+- `src/application/CustomerEnquiryOrchaestrator.py`: request validation, language detection, two AI calls, and result publishing. Preserve the existing filename spelling unless a deliberate rename updates every import.
 - `src/application/schema/enquiry-request-v1.0.json`: bundled JSON Schema for incoming messages.
 - `src/domain/`: reserved for business entities, value objects, policies, and domain errors; currently empty apart from package initialization. Keep this layer independent of MQ, SQLAlchemy, HTTP clients, and environment configuration.
 - `src/infrastructure/ibm_mq.py`: validates IBM MQ settings, manages a bounded MQGET polling thread, and puts explicitly supplied response dictionaries on the configured result queue. Consumer and producer operations use separate connections.
@@ -26,14 +26,34 @@ Preserve the intended dependency direction: infrastructure depends on applicatio
 ## Current runtime behavior
 
 1. `src.app.main()` loads `.env` plus process environment values through `ConfigLoader`; process values win.
-2. It reads version and description from `pyproject.toml`, builds `IBMMQSettings`, and starts `IBMMQClient`.
+2. It reads version and description from `pyproject.toml`, builds `IBMMQSettings`, and injects `ResponseMessageUtility(client)` into a shared orchestrator.
 3. The MQ adapter connects with `ibmmq.connect`, opens the configured request queue, and polls it with bounded MQGET waits on a managed thread.
-4. The callback slices the supplied bytes to MQ's reported `DataLength` and invokes a new `CustomerEnquiryOrchestrator`.
-5. The orchestrator decodes UTF-8 JSON and validates it against the packaged request schema. It performs no downstream processing after validation.
+4. `dispatch_message` copies the payload up to MQ's reported `DataLength` and submits it to a `ThreadPoolExecutor(max_workers=1)`. The application worker is separate from the MQ polling thread; pending submissions are not bounded.
+5. The orchestrator validates UTF-8 JSON against the packaged schema and detects an ISO 639-3 language code, currently used only for logging. It renders `OFTL_AI_PROMPT_1` with `MESSAGE` and `CATEGORY`, parses the AI assessment as a JSON object, and requires a string `emotionalType`. It then renders `OFTL_AI_PROMPT_2` with `INPUT_MESSAGE`, `INPUT_EMOTION`, and `PRODUCT_INFORMATION` (currently the request category), calls the endpoint again, and publishes a response envelope with success code `0000`.
 6. Callback exceptions are logged and swallowed. The consumer currently uses `MQGMO_NO_SYNCPOINT`, so delivery is not transactional and failed messages are not automatically rolled back by this code.
-7. Console interrupt signals set a stop event; shutdown joins the polling thread, closes the request queue, and disconnects the queue manager.
+7. Registered console signals set a stop event. The `finally` block closes MQ resources before waiting for application workers, creating a risk while queued work is still publishing. A caught `KeyboardInterrupt` or `EOFError` exits with code 1; other exceptions inside the main run block exit with code 99.
 
-The schema requires `meta`, `mobileNumber`, `firstName`, `lastName`, `emailAddress`, `message`, and `receivedAt`; `customerId` is optional. `meta.refNumber`, `meta.channel`, and `meta.reqIssuedAt` are required, and additional properties are rejected. Although date-time and email formats are declared, the current `jsonschema.validate` call does not supply a format checker, so those formats are annotations rather than enforced validation.
+The schema requires `meta`, `mobileNumber`, `firstName`, `lastName`, `emailAddress`, `message`, `category`, and `receivedAt`; `customerId` is optional. `meta.refNumber`, `meta.channel`, and `meta.reqIssuedAt` are required, and additional properties are rejected. Although date-time and email formats are declared, the current `jsonschema.validate` call does not supply a format checker, so those formats are annotations rather than enforced validation.
+
+## Context snapshot (2026-09-06)
+
+This snapshot reflects the working tree, including pre-existing edits to `src/app.py` and the sample response filename. Analysis did not change application code or samples.
+
+- Response wire keys are `meta`, `orignalMessage`, `aiAssesment`, and `aiGeneratedResponse`. Preserve these existing spellings unless deliberately changing the external contract. Response codes and descriptions are added to copied request metadata; MQ message descriptor correlation IDs are not propagated by the worker dispatch.
+- `OpenAIUtility` uses Chat Completions with model name `default`, configurable sampling, timeout, and streaming. `callJson` validates only that parsed JSON is an object; assessment and generated-response schemas are not enforced. Endpoint and prompt configuration are checked when used, rather than comprehensively at startup.
+- Prompt templates are cached by resolved path per loader. The repository contains classification variants through v05 and 99 product JSON files. Runtime does not load that product catalogue: response generation receives only the category string as product information. `.env.example` selects the unversioned classification template and the v1.0 response template; it does not establish the developer's private configuration.
+- Failure handlers attempt result publication with codes `8100`, `8101`, or `9999`, but parsing failures can reference `enquiry_message` before assignment. Error handlers also dereference an optional response utility without checking it, and publication failures can mask the original error. Schema validation is already translated into `ValueError`, so the outer `ValidationError` handler does not catch normal request-schema failures.
+- MQ reads use no syncpoint and output puts are not coordinated with input removal. There is no durable worker backlog, rollback, recovery loop after a fatal polling error, or backout handling. SQLAlchemy is a dependency without a persistence implementation; `src/domain` and `tests/integration` contain only package initializers.
+- Debug logging currently includes the MQ settings dataclass (including its password), rendered enquiry prompts, and AI responses. This violates the intended secret/customer-data logging rules below and needs correction before enabling debug logging with real data.
+- Classification v05 lists `Angry`, `Frustrated`, and `Calm` as the permitted emotions but shows `Concerned` in its output example. Prompt examples and runtime output validation need alignment.
+
+Validation baseline using the existing Python 3.13.14 virtual environment:
+
+- `.venv\Scripts\ruff.exe check .`: passed.
+- `.venv\Scripts\python.exe -m ruff format --check .`: one existing formatting failure in `tests/unit/test_customer_enquiry_orchestrator.py`.
+- `.venv\Scripts\python.exe -m mypy src tests`: three `union-attr` errors in orchestration exception handlers (lines 118, 131, 151 at review time).
+- `.venv\Scripts\python.exe -m pytest --cov=src --cov-branch --cov-report=term-missing -q`: 27 passed, one failure (`test_main_starts_consumer`, unexpected `SystemExit: 1`), and 13 setup errors caused by denied temporary-directory access. Retrying with `-p no:cacheprovider --basetemp=.pytest_cache/context-review-20260906` still encountered directory access errors. Reported 72% coverage is from this incomplete run, not a clean baseline.
+- No live MQ, AI, or database integration was exercised. Existing findings are recorded for follow-up; documentation maintenance does not authorize silently changing runtime behavior.
 
 ## Environment and commands
 

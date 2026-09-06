@@ -1,7 +1,8 @@
 # Customer Enquiry Triage
 
-Python service that consumes customer enquiries from IBM MQ, validates them, builds a configured
-prompt, and submits it to an OpenAI-compatible classification endpoint.
+Python proof-of-concept service that consumes customer enquiries from IBM MQ, validates them,
+detects language, calls an OpenAI-compatible endpoint for assessment and response generation,
+and publishes the combined response to an IBM MQ result queue.
 
 ## Features
 
@@ -9,10 +10,14 @@ prompt, and submits it to an OpenAI-compatible classification endpoint.
 - JSON Schema validation for incoming enquiries
 - Markdown prompt templates with `{{VARIABLE_NAME}}` substitution
 - Configurable OpenAI-compatible Chat Completions client
+- Two-stage AI assessment and emotion-aware response generation
+- Combined response-envelope publishing to IBM MQ
 - Environment-based configuration and structured logging
 
 > [!NOTE]
-> SQL Server persistence and publishing to result or backout queues are not implemented yet.
+> SQL Server persistence, backout publishing, duplicate detection, and transactional delivery
+> are not implemented. Known failure-handling and shutdown gaps are recorded in
+> [AGENTS.MD](AGENTS.MD#context-snapshot-2026-09-06).
 
 ## Requirements
 
@@ -54,6 +59,7 @@ uv run customer-enquiry-triage
 | `OFTL_OPENAI_TIMEOUT` | No | `300` seconds |
 | `OFTL_OPENAI_STREAM` | No | `False` |
 | `OFTL_AI_PROMPT_1` | Yes | `prompts/customer_enquiry_triage.md` |
+| `OFTL_AI_PROMPT_2` | Yes | `prompts/message-generation/enquiry-message-generator-v1.0.md` |
 | `OFTL_IMQ_QMGR` | Yes | No default |
 | `OFTL_IMQ_CHANNEL` | Yes | No default |
 | `OFTL_IMQ_LISTENER` | Yes | `1414` in `.env.example` |
@@ -61,6 +67,8 @@ uv run customer-enquiry-triage
 | `OFTL_IMQ_PASS` | Yes | No default |
 | `OFTL_IMQ_HOST` | Yes | No default |
 | `OFTL_IMQ_REQUEST_QUEUE` | No | `AI.CUST.ENQ.TRIAGE.REQUEST.Q` |
+| `OFTL_IMQ_RESULT_QUEUE` | No | `AI.CUST.ENQ.TRIAGE.RESULT.Q` |
+| `OFTL_IMQ_BACKOUT_QUEUE` | No | `AI.CUST.ENQ.TRIAGE.BACKOUT.Q` (reserved; unused) |
 | `OFTL_LOG_LEVEL` | No | `INFO` |
 | `OFTL_LOG_FORMAT` | No | See `.env.example` |
 
@@ -72,6 +80,10 @@ credentials.
 Templates are UTF-8 Markdown files with uppercase placeholders such as `{{MESSAGE}}`. Paths are
 resolved from the service working directory. Missing files, blank templates, and unresolved
 placeholders fail with a clear error.
+
+Assessment receives `MESSAGE` and `CATEGORY`. Response generation receives `INPUT_MESSAGE`,
+`INPUT_EMOTION`, and `PRODUCT_INFORMATION`; the last currently contains the request category,
+not a product catalogue lookup. Templates are cached for the lifetime of the prompt loader.
 
 ## Development
 
