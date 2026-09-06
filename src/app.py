@@ -9,6 +9,7 @@ Reference: https://github.com/furqanbaqai/customer-enquiry-triage-py/blob/main/s
 
 # ruff: noqa: E501, UP009 -- The banner is intentionally wide; the header requires UTF-8.
 
+import os
 import signal
 import tomllib
 from concurrent.futures import Executor, ThreadPoolExecutor
@@ -92,8 +93,9 @@ def main() -> None:
     signal.signal(signal.SIGINT, request_shutdown)
     if hasattr(signal, "SIGBREAK"):
         signal.signal(signal.SIGBREAK, request_shutdown)
-    if hasattr(signal, "SIGTSTP"):
-        signal.signal(signal.SIGTSTP, request_shutdown)
+    sigtstp = getattr(signal, "SIGTSTP", None)
+    if os.name == "posix" and sigtstp is not None:
+        signal.signal(sigtstp, request_shutdown)
 
     try:
         client.start_consumer(lambda **kwargs: dispatch_message(executor, orchestrator, **kwargs))
