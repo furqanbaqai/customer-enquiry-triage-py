@@ -1,0 +1,22 @@
+{
+  "product_code": "SIB-RET-001",
+  "product_name": "Current Account",
+  "segment": "Retail",
+  "description": "Day-to-day transactional account for unlimited deposits and withdrawals, with debit-card and digital-banking access. SIB provides a Current Account Sharia certificate on the product page.",
+  "eligibility": [
+    "Age above 21",
+    "Monthly minimum balance AED 3,000, or USD/GBP/EUR 2,000",
+    "Passport and Emirates ID required",
+    "6-month bank statement and salary certificate required"
+  ],
+  "features": [
+    "Free debit card",
+    "SMS alerts",
+    "Online/mobile banking",
+    "Free monthly e-statement",
+    "24-hour call centre",
+    "AED/USD/GBP/EUR support",
+    "25+ airport lounge access",
+    "150+ ATMs"
+  ]
+}

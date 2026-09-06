@@ -1,0 +1,15 @@
+{
+  "product_code": "SIB-CORP-077",
+  "product_name": "Post-Dated Cheques Warehousing",
+  "segment": "Corporate",
+  "description": "Safekeeping and management of post-dated cheques until maturity.",
+  "eligibility": [
+    "Businesses receiving significant post-dated cheque volumes"
+  ],
+  "features": [
+    "Secure cheque storage",
+    "Maturity monitoring",
+    "Automatic deposit",
+    "Lower accounting workload"
+  ]
+}

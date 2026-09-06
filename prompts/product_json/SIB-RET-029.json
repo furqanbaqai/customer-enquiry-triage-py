@@ -1,0 +1,23 @@
+{
+  "product_code": "SIB-RET-029",
+  "product_name": "Retail Real Estate Finance - Property Takaful (All Risks)",
+  "segment": "Retail",
+  "description": "Property Takaful linked to SIB mortgage finance for residential or commercial properties, protecting the bank/customer interest against accidental loss or damage to the financed property.",
+  "eligibility": [
+    "Customers with eligible SIB-financed residential property",
+    "Customers with eligible SIB-financed commercial property",
+    "Property type/construction subject to insurer underwriting"
+  ],
+  "features": [
+    "Fire cover",
+    "Lightning cover",
+    "Explosion cover",
+    "Earthquake cover",
+    "Storm/flood cover",
+    "Burst-pipe cover",
+    "Impact cover",
+    "Theft cover",
+    "Accidental damage cover",
+    "Sum insured generally up to AED 100 million subject to category limits"
+  ]
+}

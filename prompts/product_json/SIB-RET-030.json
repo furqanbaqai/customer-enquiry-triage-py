@@ -1,0 +1,17 @@
+{
+  "product_code": "SIB-RET-030",
+  "product_name": "Debt Management",
+  "segment": "Retail",
+  "description": "Debt-management proposition listed in the Personal Finance navigation. SIB describes debt management as reducing debt burdens through strategic planning and budgeting, including consolidation of multiple Ijarah finances into one finance/instalment where appropriate.",
+  "eligibility": [
+    "Eligibility depends on the restructuring/consolidation solution offered by SIB",
+    "No separate live salary threshold verified",
+    "No separate age criterion verified"
+  ],
+  "features": [
+    "Debt consolidation",
+    "Repayment planning",
+    "Liability management",
+    "Potential consolidation of multiple Ijarah finances into one finance/instalment"
+  ]
+}

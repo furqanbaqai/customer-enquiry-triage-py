@@ -1,0 +1,21 @@
+{
+  "product_code": "SIB-RET-004",
+  "product_name": "Hassalati Account",
+  "segment": "Retail",
+  "description": "Children's Mudaraba savings account designed to build savings from birth until the child's 18th birthday.",
+  "eligibility": [
+    "Children below 18",
+    "Account operated through parent/guardian",
+    "Guardian/father ID and passport required",
+    "Child's ID/passport/birth certificate required",
+    "AED 500 minimum balance"
+  ],
+  "features": [
+    "Minimum balance AED 500",
+    "Expected profit about 0.40625% p.a.",
+    "Monthly profit",
+    "Free standing order from parents",
+    "SMS",
+    "Six-monthly e-statements"
+  ]
+}

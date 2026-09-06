@@ -1,0 +1,15 @@
+{
+  "product_code": "SIB-CORP-086",
+  "product_name": "Receivables Financing",
+  "segment": "Corporate",
+  "description": "Funding against eligible exporter receivables.",
+  "eligibility": [
+    "Exporters with eligible receivables",
+    "Approved credit required"
+  ],
+  "features": [
+    "Improves working capital",
+    "Bridges sale/shipment and payment receipt",
+    "Financing against receivables"
+  ]
+}

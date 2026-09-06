@@ -1,0 +1,16 @@
+{
+  "product_code": "SIB-RET-047",
+  "product_name": "Payroll Card",
+  "segment": "Retail",
+  "description": "Employer-funded prepaid payroll card historically provided to organisations for employees who were not eligible for a Current Account under bank policy. SIB states Payroll Prepaid Cards were upgraded to Universal Debit Card Accounts effective 8 May 2026.",
+  "eligibility": [
+    "Employer-sponsored employees historically earning below AED 3,000",
+    "Universal Account migration applies"
+  ],
+  "features": [
+    "Employer loads monthly wages",
+    "Historical eligibility age 18 or above",
+    "Historical monthly income below AED 3,000",
+    "Product remains visible in menu/KFS despite Universal Account migration"
+  ]
+}

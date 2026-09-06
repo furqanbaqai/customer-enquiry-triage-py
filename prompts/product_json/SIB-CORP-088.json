@@ -1,0 +1,15 @@
+{
+  "product_code": "SIB-CORP-088",
+  "product_name": "Bid Bond",
+  "segment": "Corporate",
+  "description": "SIB guarantee for eligible tender/bid obligations.",
+  "eligibility": [
+    "Corporate tender participants"
+  ],
+  "features": [
+    "Bid guarantee",
+    "Local issuance",
+    "International issuance",
+    "Correspondent-network support"
+  ]
+}

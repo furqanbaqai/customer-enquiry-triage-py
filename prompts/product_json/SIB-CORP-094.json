@@ -1,0 +1,14 @@
+{
+  "product_code": "SIB-CORP-094",
+  "product_name": "Counter Guarantee",
+  "segment": "Corporate",
+  "description": "Counter-guarantee supporting indirect/correspondent guarantee structures.",
+  "eligibility": [
+    "Corporates requiring guarantees through correspondent/other banks"
+  ],
+  "features": [
+    "Counter-guarantee",
+    "International correspondent-bank capability",
+    "Indirect guarantee support"
+  ]
+}

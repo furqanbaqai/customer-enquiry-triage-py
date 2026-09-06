@@ -1,0 +1,26 @@
+{
+  "product_code": "SIB-RET-012",
+  "product_name": "Personal Finance",
+  "segment": "Retail",
+  "description": "General lifestyle finance solution supporting liquidity, goods and service needs. SIB uses Murabaha for relevant goods/liquidity transactions and Service Ijarah for services.",
+  "eligibility": [
+    "Minimum salary AED 5,000",
+    "Salary transfer to SIB",
+    "Employer must be SIB-approved",
+    "AECB check required",
+    "Minimum age 21",
+    "Maximum age at completion 65 for UAE Nationals",
+    "Maximum age at completion 60 for expatriates"
+  ],
+  "features": [
+    "Campaign rate from 2.49% fixed p.a.",
+    "First instalment after 210 days",
+    "Maximum campaign finance amount AED 3,000,000",
+    "Fast approvals",
+    "Education financing",
+    "Investment financing",
+    "Travel financing",
+    "Furnishing financing",
+    "Rent financing"
+  ]
+}

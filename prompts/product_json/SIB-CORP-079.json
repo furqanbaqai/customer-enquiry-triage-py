@@ -1,0 +1,16 @@
+{
+  "product_code": "SIB-CORP-079",
+  "product_name": "Non-Financed Letter of Credit",
+  "segment": "Corporate",
+  "description": "Documentary credit for imports without SIB financing the underlying transaction.",
+  "eligibility": [
+    "Corporate importers with eligible transactions",
+    "Approved LC/cash-cover arrangements required"
+  ],
+  "features": [
+    "Supplier payment assurance",
+    "Correspondent-bank reach",
+    "Documentary processing",
+    "Import documentary credit"
+  ]
+}

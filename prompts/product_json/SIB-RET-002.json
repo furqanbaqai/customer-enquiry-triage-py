@@ -1,0 +1,20 @@
+{
+  "product_code": "SIB-RET-002",
+  "product_name": "Savings Account",
+  "segment": "Retail",
+  "description": "Sharia-compliant savings account operated on a Mudaraba basis. Customer funds participate in the Mudaraba pool and profit eligibility depends on maintaining the required balance; the account also links to SIB Millionaire draw entries.",
+  "eligibility": [
+    "Age over 18",
+    "Minimum balance AED 3,000",
+    "Original passport/Emirates ID required",
+    "Valid UAE residence visa required for expatriates"
+  ],
+  "features": [
+    "Profit-bearing when required balance is maintained",
+    "Free debit card",
+    "Deposits and withdrawals",
+    "Digital banking",
+    "E-statements",
+    "SIB Millionaire entries for qualifying savings"
+  ]
+}

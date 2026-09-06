@@ -1,0 +1,14 @@
+{
+  "product_code": "SIB-CORP-092",
+  "product_name": "Maintenance Guarantee",
+  "segment": "Corporate",
+  "description": "Guarantee supporting eligible maintenance/defects-period obligations.",
+  "eligibility": [
+    "Corporates with contractual maintenance obligations"
+  ],
+  "features": [
+    "Bank-backed maintenance obligation",
+    "Maintenance guarantee",
+    "Defects-period obligation support"
+  ]
+}

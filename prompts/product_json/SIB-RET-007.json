@@ -1,0 +1,22 @@
+{
+  "product_code": "SIB-RET-007",
+  "product_name": "Universal Account",
+  "segment": "Retail",
+  "description": "AED current account for individuals earning a monthly salary/income of AED 5,000 or less, designed as a low-balance transactional account with a debit card and unique IBAN.",
+  "eligibility": [
+    "Monthly salary/income of AED 5,000 or less",
+    "Passport and Emirates ID required",
+    "Residence visa required for expatriates"
+  ],
+  "features": [
+    "No minimum balance",
+    "Salary receipt",
+    "Debit card",
+    "ATM usage",
+    "POS usage",
+    "E-commerce usage",
+    "Transfers and bill payments",
+    "SIB Digital access",
+    "Unique IBAN"
+  ]
+}

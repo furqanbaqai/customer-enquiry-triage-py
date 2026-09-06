@@ -1,0 +1,14 @@
+{
+  "product_code": "SIB-CORP-091",
+  "product_name": "Retention Guarantee",
+  "segment": "Corporate",
+  "description": "Guarantee supporting contractual retention arrangements.",
+  "eligibility": [
+    "Contractors requiring retention security",
+    "Corporates requiring retention security"
+  ],
+  "features": [
+    "Bank-backed retention security",
+    "Retention guarantee"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "product_code": "SIB-RET-041",
+  "product_name": "Sanad Card",
+  "segment": "Retail",
+  "description": "Co-branded prepaid card supporting Sharjah Social Services Department programmes for people receiving social assistance, shelter, home-care or protection services.",
+  "eligibility": [
+    "Eligible Sharjah Social Services Department beneficiaries",
+    "General prepaid identification requirements apply",
+    "General prepaid application requirements apply"
+  ],
+  "features": [
+    "AED 52.50 annual fee",
+    "ATM usage",
+    "In-store usage",
+    "Online usage",
+    "Digital loading",
+    "Mastercard Priceless"
+  ]
+}

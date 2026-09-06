@@ -1,0 +1,23 @@
+{
+  "product_code": "SIB-RET-038",
+  "product_name": "Jeans Card",
+  "segment": "Retail",
+  "description": "Reloadable prepaid card using the Hawalat al-Haqq/al-Dain Sharia structure described in SIB's prepaid KFS.",
+  "eligibility": [
+    "Age 18 or above",
+    "Valid Emirates ID required",
+    "Passport required",
+    "Prepaid-card application/KFS requirements"
+  ],
+  "features": [
+    "No minimum balance",
+    "No monthly charge",
+    "AED 52.50 annual fee",
+    "Free SIB ATM/CDM access",
+    "In-store usage",
+    "Online usage",
+    "ATM usage",
+    "Easy digital loading",
+    "Mastercard Priceless"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "product_code": "SIB-RET-011",
+  "product_name": "Wakala Deposit Account",
+  "segment": "Retail",
+  "description": "Customer Wakala investment deposit where SIB acts as agent to manage funds in a Sharia-compliant manner. The Personal page explicitly makes it available to individuals and government organisations.",
+  "eligibility": [
+    "Existing SIB current/savings/call-account holders",
+    "UAE residents",
+    "UAE non-residents",
+    "Salaried customers",
+    "Non-salaried customers",
+    "Minors through a parent/court-appointed guardian",
+    "Government organisations"
+  ],
+  "features": [
+    "Minimum AED 1 million or equivalent",
+    "AED currency option",
+    "USD currency option",
+    "GBP currency option",
+    "EUR currency option",
+    "1-month tenor",
+    "3-month tenor",
+    "6-month tenor",
+    "9-month tenor",
+    "12-month tenor",
+    "Expected profit",
+    "Up to 80% finance against deposit",
+    "SMS",
+    "Digital banking"
+  ]
+}

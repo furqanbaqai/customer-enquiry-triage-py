@@ -1,0 +1,19 @@
+{
+  "product_code": "SIB-RET-048",
+  "product_name": "Easy Pay",
+  "segment": "Retail",
+  "description": "Card purchase conversion / Easy Payment Plan for eligible Smiles and Cashback Covered Card purchases.",
+  "eligibility": [
+    "Eligible Smiles Covered Card holders",
+    "Eligible Cashback Covered Card holders",
+    "Qualifying transactions required",
+    "Approval conditions apply",
+    "Merchant/transaction conditions apply"
+  ],
+  "features": [
+    "Convert qualifying purchases of at least AED 1,000 to instalments",
+    "Merchant-specific plans",
+    "Tenor-specific plans and rates",
+    "Early settlement fee 1% plus VAT"
+  ]
+}

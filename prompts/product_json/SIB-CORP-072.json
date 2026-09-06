@@ -1,0 +1,15 @@
+{
+  "product_code": "SIB-CORP-072",
+  "product_name": "Cash Delivery",
+  "segment": "Corporate",
+  "description": "Secure delivery of cash to customer-designated locations.",
+  "eligibility": [
+    "Cash-intensive corporate customers"
+  ],
+  "features": [
+    "Secure cash handling",
+    "Insured cash handling",
+    "Flexible timing",
+    "Lower cash-in-transit risk"
+  ]
+}

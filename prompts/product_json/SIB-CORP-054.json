@@ -1,0 +1,16 @@
+{
+  "product_code": "SIB-CORP-054",
+  "product_name": "Bridge Finance",
+  "segment": "Corporate",
+  "description": "Short-term financing designed to bridge an urgent liquidity requirement until medium or long-term funding is finalized.",
+  "eligibility": [
+    "Corporate customers with temporary liquidity gaps",
+    "Underlying medium or long-term financing need required"
+  ],
+  "features": [
+    "Immediate liquidity",
+    "Maximum tenure one year",
+    "Streamlined documentation",
+    "Quick processing"
+  ]
+}

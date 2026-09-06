@@ -1,0 +1,21 @@
+{
+  "product_code": "SIB-RET-024",
+  "product_name": "Real Estate Finance",
+  "segment": "Retail",
+  "description": "Umbrella property-finance solution for residential land/ready property, non-residential property and under-construction property, with flexible pricing and long tenors.",
+  "eligibility": [
+    "Retail salaried applicants",
+    "Retail self-employed applicants",
+    "Sub-product minimum salary requirements apply",
+    "Property limits vary by sub-product",
+    "Geographic restrictions may apply"
+  ],
+  "features": [
+    "Finance amount up to AED 50 million",
+    "Tenure up to 25 years",
+    "Residential pricing from 3.75% p.a. reducing",
+    "Residential property financing",
+    "Non-residential property financing",
+    "Under-construction property financing"
+  ]
+}

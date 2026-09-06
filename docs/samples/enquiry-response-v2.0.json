@@ -1,0 +1,39 @@
+{
+  "meta": {
+    "refNumber": "ENQ-2026-0001",
+    "channel": "WebSite",
+    "reqIssuedAt": "2026-08-08T11:59:55Z",
+    "responseCode": "0000",
+    "responseDescription": "Success"
+  },
+  "orignalMessage": {
+    "customerId": "CUST10042001",
+    "mobileNumber": "+971501234567",
+    "firstName": "Ahmed",
+    "lastName": "Khan",
+    "emailAddress": "ahmed.khan@example.com",
+    "message": "Can I use the mobile app outside the UAE while travelling? Please share the correct process, charges, and expected timeline if applicable.",
+    "category": "Digital Account",
+    "receivedAt": "2026-08-08T12:00:00Z"
+  },
+  "aiAssesment": {
+    "type": "Enquiry",
+    "product": "SIB Digital Account",
+    "category": "Digital Banking",
+    "product_code": "SIB-RET-005",
+    "segment": "Retail",
+    "priority": "Normal",
+    "emotionalType": "Calm",
+    "emotionScore": 0.3,
+    "confidence": 0.9,
+    "human_review_required": false,
+    "reason": "Customer inquiring about mobile app usage outside UAE."
+  },
+  "aiGeneratedResponse": {
+    "greeting": "<p>Dear Customer,</p>",
+    "body": "<p>Thank you for your inquiry. You can use the <b>Mobile App</b> of the <b>Digital Account</b> while travelling outside the UAE. To access the app, you will need to log in with your credentials and ensure your device is connected to the internet. There are no specific charges or timelines associated with using the app while travelling. If you need further assistance, feel free to reach out.</p>",
+    "closing": "<p>Please let us know if you have any other questions.</p>",
+    "signature": "Best regards,<br><b>Customer Support Team</b>",
+    "infoAvail": true
+  }
+}

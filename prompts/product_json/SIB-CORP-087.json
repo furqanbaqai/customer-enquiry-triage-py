@@ -1,0 +1,15 @@
+{
+  "product_code": "SIB-CORP-087",
+  "product_name": "Inward & Outward Collection Bills for Collection",
+  "segment": "Corporate",
+  "description": "Documentary collection handling for imports and exports.",
+  "eligibility": [
+    "Importers trading on collection terms",
+    "Exporters trading on collection terms"
+  ],
+  "features": [
+    "Inward documentary collection",
+    "Outward documentary collection",
+    "Trade-document processing"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "product_code": "SIB-CORP-053",
+  "product_name": "Contract Financing",
+  "segment": "Corporate",
+  "description": "Project and contract finance structured around milestones and progressive project payments.",
+  "eligibility": [
+    "Contractors executing awarded projects",
+    "Companies executing awarded projects",
+    "Subject to project requirements",
+    "Subject to creditworthiness"
+  ],
+  "features": [
+    "Project-specific limits",
+    "General limits",
+    "LCs/LGs",
+    "Project funding",
+    "Finance against progressive payments",
+    "Cash-management support"
+  ]
+}

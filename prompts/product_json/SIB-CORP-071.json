@@ -1,0 +1,15 @@
+{
+  "product_code": "SIB-CORP-071",
+  "product_name": "Demand Draft / Cashier Order",
+  "segment": "Corporate",
+  "description": "Bank-issued payment instruments for suppliers and business partners.",
+  "eligibility": [
+    "Corporate customers requiring bank-issued payment instruments"
+  ],
+  "features": [
+    "Certified payments",
+    "Payments without beneficiary bank-account details",
+    "Recurring payment support",
+    "Non-urgent payment support"
+  ]
+}

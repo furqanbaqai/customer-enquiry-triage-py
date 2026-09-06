@@ -1,0 +1,23 @@
+{
+  "product_code": "SIB-RET-005",
+  "product_name": "SIB Digital Account",
+  "segment": "Retail",
+  "description": "Digitally opened account combining everyday banking and savings functionality. The savings component follows Mudaraba principles and profit is paid monthly.",
+  "eligibility": [
+    "Age 18 or above",
+    "Salaried applicants",
+    "Minimum salary AED 3,000",
+    "Emirates ID and passport required",
+    "Proof of income/address required",
+    "AED 3,000 balance required to earn profit"
+  ],
+  "features": [
+    "Instant mobile-only account opening",
+    "Expected profit about 0.40625% p.a.",
+    "Free debit card",
+    "Free remittances to India/Pakistan",
+    "E-statements",
+    "SMS",
+    "Digital banking"
+  ]
+}

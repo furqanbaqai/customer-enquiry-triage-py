@@ -1,0 +1,18 @@
+{
+  "product_code": "SIB-CORP-057",
+  "product_name": "SIB Pay E-Commerce",
+  "segment": "Corporate",
+  "description": "Online payment-gateway solution for websites, mobile apps and e-commerce platforms.",
+  "eligibility": [
+    "Online merchants",
+    "Corporate e-commerce businesses"
+  ],
+  "features": [
+    "API integration",
+    "Platform integration",
+    "Intelligent routing",
+    "PCI-DSS",
+    "3-D Secure",
+    "Secure transaction reversal"
+  ]
+}

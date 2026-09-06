@@ -1,0 +1,15 @@
+{
+  "product_code": "SIB-CORP-085",
+  "product_name": "Assignment of Proceeds",
+  "segment": "Corporate",
+  "description": "Facility supporting assignment of eligible LC proceeds.",
+  "eligibility": [
+    "Corporate exporters",
+    "Letter of Credit beneficiaries"
+  ],
+  "features": [
+    "Assignment of eligible LC proceeds",
+    "Structured allocation of documentary-credit proceeds",
+    "Payment of documentary-credit proceeds"
+  ]
+}

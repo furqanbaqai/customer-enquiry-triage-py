@@ -1,0 +1,21 @@
+{
+  "product_code": "SIB-RET-040",
+  "product_name": "Al Sa’da Card",
+  "segment": "Retail",
+  "description": "Co-branded SIB prepaid card for Sharjah Police members.",
+  "eligibility": [
+    "Sharjah Police members",
+    "General prepaid eligibility applies",
+    "General prepaid documentation applies"
+  ],
+  "features": [
+    "No annual fee",
+    "No minimum balance",
+    "No monthly charge",
+    "ATM/CDM usage",
+    "In-store usage",
+    "Online usage",
+    "Digital loading",
+    "Mastercard Priceless"
+  ]
+}

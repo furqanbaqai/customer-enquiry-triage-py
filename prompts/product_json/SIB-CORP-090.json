@@ -1,0 +1,14 @@
+{
+  "product_code": "SIB-CORP-090",
+  "product_name": "Advance Payment Guarantee",
+  "segment": "Corporate",
+  "description": "Guarantee supporting contracts where an advance payment is received.",
+  "eligibility": [
+    "Contractors receiving advances",
+    "Suppliers receiving advances"
+  ],
+  "features": [
+    "Advance-payment guarantee",
+    "Protection of contractual advance-payment obligations"
+  ]
+}

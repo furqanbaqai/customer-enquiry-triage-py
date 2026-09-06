@@ -1,0 +1,21 @@
+{
+  "product_code": "SIB-RET-009",
+  "product_name": "SIB MaxPlus Deposit Account",
+  "segment": "Retail",
+  "description": "Investment deposit with higher expected return for defined longer tenors; SIB links an Investment Wakala Sharia certificate to the product.",
+  "eligibility": [
+    "Age 21 or above",
+    "Minimum deposit AED 10,000",
+    "Maximum deposit AED 5 million",
+    "Passport/Emirates ID required",
+    "Residence visa required for expatriates"
+  ],
+  "features": [
+    "Minimum AED 10,000",
+    "Maximum AED 5 million",
+    "Expected rate up to 4.60% p.a. for 18 months",
+    "Expected rate up to 4.80% p.a. for 36 months",
+    "Up to 90% finance against deposit",
+    "Access to funds without breaking the deposit subject to product terms"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "product_code": "SIB-CORP-064",
+  "product_name": "Watani Account",
+  "segment": "Corporate",
+  "description": "Business/high-value account participating in SIB's Mudaraba pool.",
+  "eligibility": [
+    "Businesses/high-value customers",
+    "Minimum balance AED 100,000 or USD 100,000"
+  ],
+  "features": [
+    "AED/USD 100,000 minimum",
+    "Expected profit 0.20312% p.a.",
+    "Monthly profits",
+    "Relationship manager",
+    "Preferential FX"
+  ]
+}

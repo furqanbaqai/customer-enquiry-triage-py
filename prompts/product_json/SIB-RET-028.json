@@ -1,0 +1,23 @@
+{
+  "product_code": "SIB-RET-028",
+  "product_name": "Life Takaful Insurance Policy",
+  "segment": "Retail",
+  "description": "Group Credit Life Takaful, an Islamic insurance scheme covering outstanding SIB finance liabilities in the event of death or Permanent Total Disability (PTD). It is mandatory for Personal and Real Estate Finance.",
+  "eligibility": [
+    "Individuals with approved SIB finance",
+    "UAE/GCC nationals",
+    "Expatriates",
+    "UAE residents",
+    "Maximum cover age generally 70 for death",
+    "Maximum cover age generally 65 for PTD",
+    "Provider underwriting limits apply"
+  ],
+  "features": [
+    "Death cover",
+    "Permanent Total Disability cover",
+    "Three approved Takaful providers",
+    "Monthly contributions",
+    "Cover during postponed finance instalments",
+    "Provider-specific maximum cover limits"
+  ]
+}

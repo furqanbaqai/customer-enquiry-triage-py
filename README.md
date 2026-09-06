@@ -1,2 +1,117 @@
-# customer-enquiry-triage-py
-Specialized AI Proxy that consumes customer enquiries off IBM MQ, calls an AI endpoint (OpenAI-compatible chat completion) to classify each one, persists tracking/history state in SQL Server, and republishes the classification result to another MQ queue
+# Customer Enquiry Triage
+
+Python proof-of-concept service that consumes customer enquiries from IBM MQ, validates them,
+detects language, calls an OpenAI-compatible endpoint for assessment and response generation,
+and publishes the combined response to an IBM MQ result queue.
+
+## Features
+
+- Asynchronous IBM MQ consumption with worker-isolated processing
+- JSON Schema validation for incoming enquiries
+- Markdown prompt templates with `{{VARIABLE_NAME}}` substitution
+- Configurable OpenAI-compatible Chat Completions client
+- Two-stage AI assessment and emotion-aware response generation
+- Combined response-envelope publishing to IBM MQ
+- Environment-based configuration and structured logging
+
+> [!NOTE]
+> SQL Server persistence, backout publishing, duplicate detection, and transactional delivery
+> are not implemented. Known failure-handling and shutdown gaps are recorded in
+> [AGENTS.MD](AGENTS.MD#context-snapshot-2026-09-06).
+
+## Requirements
+
+- Python 3.12 or newer
+- [`uv`](https://docs.astral.sh/uv/)
+- IBM MQ C client runtime and SDK components
+- Access to IBM MQ and an OpenAI-compatible endpoint
+
+## Quick start
+
+```powershell
+git clone https://github.com/furqanbaqai/customer-enquiry-triage-py.git
+cd customer-enquiry-triage-py
+uv sync --dev
+Copy-Item .env.example .env
+```
+
+Update `.env` with your MQ connection, API token, and endpoint values, then start the service:
+
+```powershell
+uv run python -m src
+```
+
+The installed command is equivalent:
+
+```powershell
+uv run customer-enquiry-triage
+```
+
+## Configuration
+
+| Variable | Required | Default or example |
+| --- | --- | --- |
+| `OFTL_OPENAI_URL` | Yes | OpenAI-compatible base or `/chat/completions` URL |
+| `OFTL_OPENAI_APITOKEN` | Yes | No default |
+| `OFTL_OPENAI_TEMPERATURE` | No | `0.1` |
+| `OFTL_OPENAI_TOP_P` | No | `0.9` |
+| `OFTL_OPENAI_MAX_TOKENS` | No | `200` |
+| `OFTL_OPENAI_TIMEOUT` | No | `300` seconds |
+| `OFTL_OPENAI_STREAM` | No | `False` |
+| `OFTL_AI_PROMPT_1` | Yes | `prompts/customer_enquiry_triage.md` |
+| `OFTL_AI_PROMPT_2` | Yes | `prompts/message-generation/enquiry-message-generator-v1.0.md` |
+| `OFTL_IMQ_QMGR` | Yes | No default |
+| `OFTL_IMQ_CHANNEL` | Yes | No default |
+| `OFTL_IMQ_LISTENER` | Yes | `1414` in `.env.example` |
+| `OFTL_IMQ_USERNAME` | Yes | No default |
+| `OFTL_IMQ_PASS` | Yes | No default |
+| `OFTL_IMQ_HOST` | Yes | No default |
+| `OFTL_IMQ_REQUEST_QUEUE` | No | `AI.CUST.ENQ.TRIAGE.REQUEST.Q` |
+| `OFTL_IMQ_RESULT_QUEUE` | No | `AI.CUST.ENQ.TRIAGE.RESULT.Q` |
+| `OFTL_IMQ_BACKOUT_QUEUE` | No | `AI.CUST.ENQ.TRIAGE.BACKOUT.Q` (reserved; unused) |
+| `OFTL_LOG_LEVEL` | No | `INFO` |
+| `OFTL_LOG_FORMAT` | No | See `.env.example` |
+
+See [`.env.example`](.env.example) for the complete configuration. Never commit `.env` or real
+credentials.
+
+## Prompt templates
+
+Templates are UTF-8 Markdown files with uppercase placeholders such as `{{MESSAGE}}`. Paths are
+resolved from the service working directory. Missing files, blank templates, and unresolved
+placeholders fail with a clear error.
+
+Assessment receives `MESSAGE` and `CATEGORY`. Response generation receives `INPUT_MESSAGE`,
+`INPUT_EMOTION`, and `PRODUCT_INFORMATION`; the last currently contains the request category,
+not a product catalogue lookup. Templates are cached for the lifetime of the prompt loader.
+
+## Development
+
+Run the quality checks before submitting a change:
+
+```powershell
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy src tests
+uv run pytest -q
+```
+
+## Project structure
+
+```text
+src/application/     Enquiry orchestration and request schema
+src/config/          Environment configuration
+src/infrastructure/  IBM MQ adapter
+src/utilities/       Logging, prompt, and OpenAI helpers
+prompts/             Markdown prompt templates
+tests/               Unit and integration tests
+```
+
+## Contributing
+
+Open an issue before proposing a substantial change. Keep pull requests focused, add tests for
+behavior changes, and ensure the development checks pass.
+
+## License
+
+Licensed under the [Apache License 2.0](LICENSE).

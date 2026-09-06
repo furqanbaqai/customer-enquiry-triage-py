@@ -1,0 +1,23 @@
+{
+  "product_code": "SIB-RET-037",
+  "product_name": "SIB Digital Card",
+  "segment": "Retail",
+  "description": "Reloadable SIB prepaid card; prepaid balances are not linked to a traditional bank account. SIB's KFS describes the Sharia structure as Hawalat al-Haqq/al-Dain, a restricted transfer of right/debt.",
+  "eligibility": [
+    "Age 18 or above",
+    "Emirates ID required",
+    "Passport required",
+    "Standard prepaid application/KFS requirements"
+  ],
+  "features": [
+    "No minimum balance",
+    "No monthly charge",
+    "No annual fee",
+    "Free SIB ATM/CDM access",
+    "ATM usage",
+    "In-store usage",
+    "Online usage",
+    "Online/mobile banking",
+    "Mastercard Priceless"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "product_code": "SIB-CORP-078",
+  "product_name": "Remote Cheque Deposit",
+  "segment": "Corporate",
+  "description": "Remote cheque scanning/deposit from corporate premises.",
+  "eligibility": [
+    "SIB corporate customers receiving cheque payments"
+  ],
+  "features": [
+    "24/7 cheque scanning",
+    "Bulk cheque deposit",
+    "Online tracking",
+    "Reconciliation",
+    "No branch visit required"
+  ]
+}

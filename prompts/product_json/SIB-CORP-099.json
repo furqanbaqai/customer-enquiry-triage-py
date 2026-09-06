@@ -1,0 +1,19 @@
+{
+  "product_code": "SIB-CORP-099",
+  "product_name": "Working Capital Finance",
+  "segment": "Corporate",
+  "description": "Sharia-compliant short-term finance for government/semi-government operations, projects, raw materials or production.",
+  "eligibility": [
+    "Government entities requiring working capital",
+    "Semi-government entities requiring working capital"
+  ],
+  "features": [
+    "Flexible repayments",
+    "Streamlined documentation",
+    "Islamic financing structures",
+    "Operational financing",
+    "Project financing",
+    "Raw-material financing",
+    "Production financing"
+  ]
+}
