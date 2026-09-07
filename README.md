@@ -1,10 +1,14 @@
 # Customer Enquiry Triage
 
-Python proof-of-concept service that consumes customer enquiries from IBM MQ, validates them,
-detects language, calls an OpenAI-compatible endpoint for assessment and response generation,
-and publishes the combined response to an IBM MQ result queue.
+Python proof-of-concept service that consumes customer enquiries from IBM MQ and dispatches
+them to a worker callback. The callback currently logs receipt and has a placeholder for a
+replacement processing library or class. The existing AI orchestrator is no longer invoked
+by the service entry point.
 
 ## Features
+
+The repository includes the following components; validation, AI processing, and result
+publishing require explicitly invoking the existing orchestrator or wiring a replacement handler.
 
 - Asynchronous IBM MQ consumption with worker-isolated processing
 - JSON Schema validation for incoming enquiries
@@ -35,19 +39,40 @@ uv sync --dev
 Copy-Item .env.example .env
 ```
 
-Update `.env` with your MQ connection, API token, and endpoint values, then start the service:
+Update `.env` with your MQ connection values, then start the service. API and prompt settings
+are needed when invoking the existing AI orchestrator:
 
 ```powershell
-uv run python -m src
+uv run python -m src CLIENT
 ```
 
 The installed command is equivalent:
 
 ```powershell
-uv run customer-enquiry-triage
+uv run customer-enquiry-triage CLIENT
 ```
 
 ## Configuration
+
+`CustomerEnquiryClient.sendToWorkflow(payload)` in `src/application/CustomerEnquiryClient.py`
+accepts UTF-8 JSON bytes, validates the enquiry schema (including email and date-time formats),
+and sends the complete enquiry as a JSON string to the v2 Temporal workflow. Call it from a
+synchronous thread; it waits for workflow completion. The MQ callback does not yet invoke it.
+`OFTL_AI_TEMPORALURL` is optional and defaults to `localhost:7233`. A Temporal worker must
+register `CustomerEnquiryOrchaestrator` from `CustomerEnquiryOrchestrator_v2.py` on task queue
+`CUSTOMER.ENQUIRY.REQUEST`. Workflow IDs use `customer-enquiry-<meta.refNumber>` and reject
+duplicate executions while Temporal retains their history. Connection and RPC timeouts are
+30 seconds, workflow execution is limited to 300 seconds, and the client wait to 330 seconds.
+Invalid input raises `ValueError`; schema-loading and Temporal failures raise `RuntimeError`
+with the original cause preserved. Logs omit payloads and workflow results. A client timeout
+does not guarantee that the server-side workflow has stopped.
+
+The required mode is `CLIENT` or `WORKER`. `CLIENT` starts the IBM MQ consumer.
+`uv run python -m src WORKER` currently returns from a TODO placeholder without starting MQ.
+Python callers can use `main("CLIENT")` or `main("WORKER")`; calling `main()` reads CLI arguments.
+
+AI endpoint and prompt requirements below apply to the existing orchestrator, which is
+currently disconnected from the message callback.
 
 | Variable | Required | Default or example |
 | --- | --- | --- |

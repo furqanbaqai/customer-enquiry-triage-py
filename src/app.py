@@ -9,6 +9,7 @@ Reference: https://github.com/furqanbaqai/customer-enquiry-triage-py/blob/main/s
 
 # ruff: noqa: E501, UP009 -- The banner is intentionally wide; the header requires UTF-8.
 
+import argparse
 import os
 import signal
 import tomllib
@@ -17,35 +18,33 @@ from pathlib import Path
 from threading import Event
 from typing import Any
 
-from src.application.CustomerEnquiryOrchaestrator import CustomerEnquiryOrchestrator
+from src.application.CustomerEnquiryClient import CustomerEnquiryClient
 from src.config import ConfigLoader
 from src.infrastructure import IBMMQClient, IBMMQSettings
-from src.utilities import Logging, ResponseMessageUtility
+from src.utilities import Logging
 
 _PROJECT_FILE = Path(__file__).resolve().parents[1] / "pyproject.toml"
 
 
-def on_message(orchestrator: CustomerEnquiryOrchestrator | None = None, **kwargs: Any) -> None:
+def on_message(**kwargs: Any) -> None:
     """Handle a message delivered asynchronously from the request queue."""
-    message = kwargs.get("msg")
-    callback_context = kwargs.get("cbc")
-    if callback_context is not None and callback_context.Reason != 0:
-        Logging.error("IBM MQ callback reported reason code %s", callback_context.Reason)
-        return
-
-    message_length = callback_context.DataLength if callback_context is not None else None
-    payload = message[:message_length] if message is not None else b""
-    Logging.info("Received IBM MQ request message (%d bytes).", len(payload))
     try:
-        # TODO! Call Temporal server and push the message to the temporal queue
-        (orchestrator or CustomerEnquiryOrchestrator()).process_enquiry(payload)
+        message = kwargs.get("msg")
+        callback_context = kwargs.get("cbc")
+        if callback_context is not None and callback_context.Reason != 0:
+            Logging.error("IBM MQ callback reported reason code %s", callback_context.Reason)
+            return
+
+        message_length = callback_context.DataLength if callback_context is not None else None
+        payload = message[:message_length] if message is not None else b""
+        Logging.info("Received IBM MQ request message (%d bytes).", len(payload))
+        CustomerEnquiryClient.sendToWorkflow(payload)
     except Exception as exception:
-        Logging.error("Failed to process customer enquiry: %s", exception)
+        Logging.error("[ERR-03] Failed to process IBM MQ request message: %s", exception)
 
 
 def dispatch_message(
     executor: Executor,
-    orchestrator: CustomerEnquiryOrchestrator,
     **kwargs: Any,
 ) -> None:
     """Copy an MQ delivery and submit it to the application worker.
@@ -60,7 +59,6 @@ def dispatch_message(
     payload = bytes(message[:message_length]) if message is not None else b""
     executor.submit(
         on_message,
-        orchestrator,
         msg=payload,
         cbc=_CallbackContext(reason=reason, data_length=len(payload)),
     )
@@ -74,16 +72,35 @@ class _CallbackContext:
         self.DataLength = data_length
 
 
-def main() -> None:
-    """Start the customer enquiry triage service."""
+def main(mode: str | None = None) -> None:
+    """Run the requested mode, reading command-line arguments when mode is omitted."""
+    parser = argparse.ArgumentParser(description="Customer enquiry triage service")
+    parser.add_argument("mode", choices=("CLIENT", "WORKER"), help="Service execution mode")
+    arguments = parser.parse_args(None if mode is None else [mode])
+
     ConfigLoader.load_configurations()
     display_banner()
     display_project_information()
 
+    if arguments.mode == "CLIENT":
+        _run_mq_client()
+    elif arguments.mode == "WORKER":
+        # TODO: Implement worker startup using the replacement processing library or class.
+        return
+    else:
+        Logging.error("Unknown mode: %s", arguments.mode)
+        return
+
+
+def main_client() -> None:
+    """Run the IBM MQ client mode."""
+    main(mode="CLIENT")
+
+
+def _run_mq_client() -> None:
+    """Start the IBM MQ consumer and wait for shutdown."""
+
     client = IBMMQClient(IBMMQSettings.from_config())
-    orchestrator = CustomerEnquiryOrchestrator(
-        response_message_utility=ResponseMessageUtility(client)
-    )
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="enquiry-worker")
     stop_event = Event()
 
@@ -99,8 +116,8 @@ def main() -> None:
         signal.signal(sigtstp, request_shutdown)
 
     try:
-        client.start_consumer(lambda **kwargs: dispatch_message(executor, orchestrator, **kwargs))
-        Logging.info("[CEP] Customer enquiry triage service is consuming IBM MQ requests.")
+        client.start_consumer(lambda **kwargs: dispatch_message(executor, **kwargs))
+        Logging.info("[CEP] Customer enquiry triage client service is consuming IBM MQ requests.")
         Logging.info("[CEP] Waiting for the message ...")
         stop_event.wait()
     except (KeyboardInterrupt, EOFError):
@@ -128,7 +145,7 @@ def display_banner() -> None:
     print(banner)
 
 
-def display_project_information(project_file: Path = _PROJECT_FILE) -> None:
+def display_project_information(project_file: Path = _PROJECT_FILE, startupMode: str = "") -> None:
     """Display the version and description declared in ``pyproject.toml``."""
     with project_file.open("rb") as file:
         configuration = tomllib.load(file)
@@ -144,3 +161,4 @@ def display_project_information(project_file: Path = _PROJECT_FILE) -> None:
 
     print(f"Version: {version}")
     print(f"Description: {description}")
+    print(f"Startup Mode: {startupMode}")

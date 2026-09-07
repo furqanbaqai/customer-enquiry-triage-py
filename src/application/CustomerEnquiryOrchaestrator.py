@@ -7,6 +7,7 @@ Reference: https://github.com/furqanbaqai/customer-enquiry-triage-py
 
 import json
 import traceback
+import warnings
 from collections.abc import Callable
 from importlib.resources import files
 
@@ -21,6 +22,7 @@ from src.utilities import (
 )
 
 
+# DEPRECEATED!
 class CustomerEnquiryOrchestrator:
     """
     Coordinate the end-to-end processing of an incoming customer enquiry message.
@@ -44,6 +46,12 @@ class CustomerEnquiryOrchestrator:
         response_message_utility: ResponseMessageUtility | None = None,
     ) -> None:
         """Create the orchestrator with injectable prompt and AI boundaries."""
+        warnings.warn(
+            "CustomerEnquiryOrchestrator is deprecated and will be removed in a future release. "
+            "Use the updated orchestration implementation instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self._prompt_loader = prompt_loader or PromptLoader()
         self._func_OpenaiUtil_callJSON = prompt_sender or OpenAIUtility().callJson
         self._prompt_configuration_key = prompt_configuration_key
