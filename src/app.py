@@ -10,6 +10,7 @@ Reference: https://github.com/furqanbaqai/customer-enquiry-triage-py/blob/main/s
 # ruff: noqa: E501, UP009 -- The banner is intentionally wide; the header requires UTF-8.
 
 import argparse
+import asyncio
 import os
 import signal
 import tomllib
@@ -19,6 +20,7 @@ from threading import Event
 from typing import Any
 
 from src.application.CustomerEnquiryClient import CustomerEnquiryClient
+from src.application.CustomerEnquiryWorker import CustomerEnquiryWorker
 from src.config import ConfigLoader
 from src.infrastructure import IBMMQClient, IBMMQSettings
 from src.utilities import Logging
@@ -80,13 +82,15 @@ def main(mode: str | None = None) -> None:
 
     ConfigLoader.load_configurations()
     display_banner()
-    display_project_information()
+    display_project_information(startupMode=arguments.mode)
 
     if arguments.mode == "CLIENT":
         _run_mq_client()
     elif arguments.mode == "WORKER":
-        # TODO: Implement worker startup using the replacement processing library or class.
-        return
+        try:
+            asyncio.run(CustomerEnquiryWorker.start())
+        except KeyboardInterrupt:
+            Logging.info("[CEP] Customer enquiry Temporal worker stopped by user.")
     else:
         Logging.error("Unknown mode: %s", arguments.mode)
         return
@@ -95,6 +99,11 @@ def main(mode: str | None = None) -> None:
 def main_client() -> None:
     """Run the IBM MQ client mode."""
     main(mode="CLIENT")
+
+
+def main_worker() -> None:
+    """Run the IBM MQ client mode."""
+    main(mode="WORKER")
 
 
 def _run_mq_client() -> None:

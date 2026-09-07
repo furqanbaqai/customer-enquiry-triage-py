@@ -4,13 +4,15 @@
 
 This repository is an early proof of concept for a long-running Python service that will consume customer enquiries from IBM MQ, classify them through an OpenAI-compatible endpoint, store tracking and history data in SQL Server, and publish classification results to an output queue.
 
-The active runtime loads configuration, polls IBM MQ, and dispatches messages to one application worker. `on_message(**kwargs)` checks the callback reason and logs the received payload length, with a TODO for a replacement processing library or class. It no longer constructs or invokes `CustomerEnquiryOrchestrator`. The existing orchestrator retains validation, language detection, two AI calls, and result publishing for separate use. SQL Server persistence, backout publishing, duplicate detection, application-managed retries, and transaction handling remain unimplemented.
+The active runtime loads configuration, polls IBM MQ, and dispatches copied message bytes to one application worker. `on_message(**kwargs)` invokes `CustomerEnquiryClient.sendToWorkflow`, which validates the enquiry and executes the v2 Temporal workflow. The v2 workflow currently only echoes its input; the deprecated AI orchestrator remains separate. SQL Server persistence, backout publishing, application-managed retries, and transaction handling remain unimplemented.
 
 These instructions apply to the entire repository. Keep this file current when the architecture, tooling, or required validation changes.
 
 ## Repository map
 
-- `src/application/CustomerEnquiryClient.py`: standalone synchronous `sendToWorkflow(bytes)` validates UTF-8 JSON against the enquiry schema with format checks, then invokes the v2 Temporal workflow with the full JSON string. Uses optional `OFTL_AI_TEMPORALURL` (default `localhost:7233`), task queue `CUSTOMER.ENQUIRY.REQUEST`, reference-based workflow IDs with duplicate rejection, and bounded connection/execution waits. It is not yet wired into the MQ callback. Focused validation: `uv run pytest tests/unit/test_customer_enquiry_client.py -q`.
+- `src/application/CustomerEnquiryClient.py`: active MQ-to-Temporal submission class; validates schema with formats and executes the v2 workflow using a fresh client/event loop per enquiry.
+- `src/application/CustomerEnquiryOrchestrator_v2.py`: Temporal workflow class `CustomerEnquiryOrchaestrator`; currently echoes the input JSON string.
+- `src/application/activities/`: decorated async classifier/generator activity placeholders registered by CustomerEnquiryWorker.
 - `src/app.py`: application entry point and composition root. Construct and connect dependencies here; keep business rules out of it.
 - `src/__main__.py`: support for `python -m src`.
 - `src/application/CustomerEnquiryOrchaestrator.py`: request validation, language detection, two AI calls, and result publishing. Preserve the existing filename spelling unless a deliberate rename updates every import.
@@ -26,15 +28,42 @@ Preserve the intended dependency direction: infrastructure depends on applicatio
 
 ## Current runtime behavior
 
-1. `src.app.main(mode=None)` accepts `CLIENT` or `WORKER`, parsing CLI arguments when omitted. Missing or invalid CLI modes exit with argparse usage. The explicit `WORKER` branch contains a TODO and returns without configuration or MQ startup. `CLIENT` invokes `_run_client()`, which loads `.env` plus process environment values through `ConfigLoader`; process values win. The remaining steps describe `CLIENT` mode.
-2. It reads version and description from `pyproject.toml` and builds the IBM MQ client and single-worker executor, without constructing an orchestrator or response utility.
-3. The MQ adapter connects with `ibmmq.connect`, opens the configured request queue, and polls it with bounded MQGET waits on a managed thread.
-4. `dispatch_message` copies the payload up to MQ's reported `DataLength` and submits it to a `ThreadPoolExecutor(max_workers=1)`. The application worker is separate from the MQ polling thread; pending submissions are not bounded.
-5. `on_message` logs and returns on a nonzero callback reason. Otherwise it slices the payload to `DataLength` and logs its byte count. No validation, AI call, or response publishing occurs through this callback until the replacement handler is integrated.
-6. The consumer uses `MQGMO_NO_SYNCPOINT`, so consumed messages are removed without transactional rollback even while processing is a placeholder.
-7. Registered console signals set a stop event. The `finally` block closes MQ resources before waiting for application workers; revisit this ordering if the replacement handler uses MQ. A caught `KeyboardInterrupt` or `EOFError` exits with code 1; other exceptions inside the main run block exit with code 99.
+1. `src.app.main(mode=None)` accepts `CLIENT` or `WORKER`; missing or invalid modes exit through argparse. Both valid modes load configuration and display the banner/project information. `WORKER` starts CustomerEnquiryWorker on a persistent event loop for the duration of that worker process. `CLIENT` invokes `_run_mq_client()`. `main_client()` selects CLIENT for the installed client command.
+2. The MQ adapter polls the request queue on a managed thread. `dispatch_message` copies the bytes and callback reason/length into submissions to `ThreadPoolExecutor(max_workers=1)`; pending submissions are unbounded.
+3. `on_message` logs nonzero callback reasons and returns. Otherwise it invokes `CustomerEnquiryClient.sendToWorkflow(payload)`; exceptions are caught and logged without retry or backout publication.
+4. The client decodes UTF-8 JSON and loads/checks the enquiry schema on each message. Draft 2020-12 validation includes email/date-time format checking, supported by the rfc3339-validator dependency. Invalid input raises ValueError; schema-loading and Temporal failures become chained RuntimeError exceptions.
+5. Each valid message invokes `asyncio.run()`, creating and closing an event loop. `_async_send_message` connects a fresh Temporal client using `OFTL_AI_TEMPORALURL` (default `localhost:7233`) with a 30-second connection timeout.
+6. The client passes the full enquiry as a JSON string to `CustomerEnquiryOrchaestrator.run` from `CustomerEnquiryOrchestrator_v2.py`, on task queue `CUSTOMER.ENQUIRY.REQUEST`. IDs are `CE-{channel.upper()}-{refNumber}`; reuse policy is REJECT_DUPLICATE. Execution timeout is 300 seconds and RPC timeout is 30 seconds. The earlier outer 330-second client wait timeout has been removed.
+7. `execute_workflow` waits for completion, serializing message handling through the single application worker. The v2 workflow returns `Processed message: {message}` and invokes no activities. The client logs that result at INFO, exposing the full enquiry.
+8. MQGET uses MQGMO_NO_SYNCPOINT, removing messages before validation/Temporal acceptance. Failure can therefore lose a request; duplicate rejection in Temporal does not provide transactional MQ delivery.
+9. Shutdown signals set the stop event. The finally block closes MQ resources and then waits for the executor. There is no persistent Temporal client/event-loop lifecycle yet.
 
-The schema requires `meta`, `mobileNumber`, `firstName`, `lastName`, `emailAddress`, `message`, `category`, and `receivedAt`; `customerId` is optional. `meta.refNumber`, `meta.channel`, and `meta.reqIssuedAt` are required, and additional properties are rejected. Although date-time and email formats are declared, the current `jsonschema.validate` call does not supply a format checker, so those formats are annotations rather than enforced validation.
+The schema requires `meta`, `mobileNumber`, `firstName`, `lastName`, `emailAddress`, `message`, `category`, and `receivedAt`; `customerId` is optional. `meta.refNumber`, `meta.channel`, and `meta.reqIssuedAt` are required, and additional properties are rejected. The active client enforces format checks; the deprecated orchestrator's separate parser does not.
+
+## Temporal worker implementation (2026-09-07)
+
+- `src/application/CustomerEnquiryWorker.py` provides async static `start()`. WORKER mode runs it with asyncio.run in the current process. It connects once using OFTL_AI_TEMPORALURL (default localhost:7233), with a 30-second connection timeout, and registers CustomerEnquiryOrchaestrator plus bound MessageClassifier.classify_message and MessageGenerator.generate_response_message activities on CUSTOMER.ENQUIRY.REQUEST.
+- The Worker async context manages polling and shutdown. Ctrl+C cancels the main coroutine; the context shuts down with a 30-second graceful activity period. Connection/worker failures are logged by exception type and wrapped with a chained RuntimeError.
+- Activity modules are now message_classifier.py and message_generator.py; both expose decorated async instance methods returning placeholder dictionaries. Registration does not make the echo workflow invoke them.
+- src.__init__.main lazily imports src.app, preserving the console entry point while avoiding application/configuration imports during sandbox workflow loading. A sandbox preparation regression test verifies this.
+- Validation: 9 worker-focused tests pass; Ruff check passes; modified files are formatted. Full suite: 54 passed, 4 existing failures (two client workflow-ID expectations and two app expectations), 13 temporary-directory permission errors. Mypy retains three union-attr errors in the deprecated orchestrator; full format check retains the existing orchestrator-test formatting issue. No live services were used.
+
+## Context snapshot (2026-09-07)
+
+This snapshot supersedes runtime claims in the historical 2026-09-06 review below.
+
+- User work present at review start: modified `src/application/CustomerEnquiryClient.py` and untracked `src/application/activities/`. Preserve these changes.
+- `activities/AC01_MessageClassifier.py` and `AC02_MessageGenerator.py` are empty; their package initializer contains only a docstring. No Temporal Worker registration or SQL persistence implementation was found under src.
+- Lifecycle recommendation discussed with the user, not implemented: one application-owned Temporal client on a persistent asyncio loop, with synchronous callers using run_coroutine_threadsafe. A cached client alone is unsuitable while each message uses asyncio.run. Switching execute_workflow to start_workflow is a separate completion-semantics decision, not yet authorized as an implementation change.
+- Active INFO result logging exposes enquiry data because the current workflow echoes the full JSON. Existing MQ-settings debug logging can expose credentials; deprecated orchestrator debug logs include prompts/results.
+- README still describes a disconnected callback, old workflow ID format, and the removed 330-second wait; treat source and this snapshot as current.
+- Validation used the installed virtual environment without live MQ, Temporal, AI, or database calls:
+  - `python -m ruff check .`: passed.
+  - `python -m ruff format --check .`: one existing failure in tests/unit/test_customer_enquiry_orchestrator.py.
+  - `python -m mypy src tests`: three union-attr errors in the deprecated orchestrator at lines 126, 139, and 159.
+  - `python -m pytest tests/unit/test_customer_enquiry_client.py -q -p no:cacheprovider --tb=short`: 15 passed, 2 failed. Both expect customer-enquiry-REF-123 but receive CE-WEBSITE-REF-123.
+- The full test suite was not rerun during this context refresh. Earlier full-suite results are historical, not a fresh baseline.
+- This refresh updates project context only; no application behavior or tests were changed.
 
 ## Context snapshot (2026-09-06)
 

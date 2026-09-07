@@ -68,7 +68,14 @@ with the original cause preserved. Logs omit payloads and workflow results. A cl
 does not guarantee that the server-side workflow has stopped.
 
 The required mode is `CLIENT` or `WORKER`. `CLIENT` starts the IBM MQ consumer.
-`uv run python -m src WORKER` currently returns from a TODO placeholder without starting MQ.
+`uv run python -m src WORKER` starts `CustomerEnquiryWorker` in the current process.
+It connects once to `OFTL_AI_TEMPORALURL` (default `localhost:7233`) and polls
+`CUSTOMER.ENQUIRY.REQUEST`, registering the v2 `CustomerEnquiryOrchaestrator` workflow and
+the bound activities `MessageClassifier.classify_message` and
+`MessageGenerator.generate_response_message`. Connection startup has a 30-second timeout.
+Press Ctrl+C to stop; the worker context performs shutdown with a 30-second activity grace
+period before requesting activity cancellation. The workflow still only echoes its input;
+registering the activities does not make the workflow invoke them.
 Python callers can use `main("CLIENT")` or `main("WORKER")`; calling `main()` reads CLI arguments.
 
 AI endpoint and prompt requirements below apply to the existing orchestrator, which is

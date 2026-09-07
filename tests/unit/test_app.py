@@ -1,11 +1,12 @@
 import logging
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from src import app
+from src.application.CustomerEnquiryWorker import CustomerEnquiryWorker
 from src.config import ConfigLoader
 from src.infrastructure import IBMMQSettings
 
@@ -70,6 +71,10 @@ def test_dispatch_message_copies_mq_buffer_before_submitting() -> None:
 def test_worker_mode_does_not_start_client(monkeypatch: pytest.MonkeyPatch, from_cli: bool) -> None:
     client_factory = MagicMock()
     configuration_loader = MagicMock()
+    start_worker = AsyncMock()
+    monkeypatch.setattr(CustomerEnquiryWorker, "start", start_worker)
+    monkeypatch.setattr(app, "display_banner", MagicMock())
+    monkeypatch.setattr(app, "display_project_information", MagicMock())
     monkeypatch.setattr(app, "IBMMQClient", client_factory)
     monkeypatch.setattr(ConfigLoader, "load_configurations", configuration_loader)
     monkeypatch.setattr(sys, "argv", ["customer-enquiry-triage", "WORKER"])
@@ -77,7 +82,8 @@ def test_worker_mode_does_not_start_client(monkeypatch: pytest.MonkeyPatch, from
     app.main(None if from_cli else "WORKER")
 
     client_factory.assert_not_called()
-    configuration_loader.assert_not_called()
+    configuration_loader.assert_called_once_with()
+    start_worker.assert_awaited_once_with()
 
 
 def test_cli_client_mode(monkeypatch: pytest.MonkeyPatch) -> None:

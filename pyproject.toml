@@ -28,6 +28,7 @@ dev = [
 [project.scripts]
 customer-enquiry-triage = "src:main"
 customer-enquiry-triage-client = "src.app:main_client"
+customer-enquiry-triage-worker = "src.app:main_worker"
 
 [build-system]
 requires = ["hatchling"]
