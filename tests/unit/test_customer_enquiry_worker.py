@@ -46,14 +46,10 @@ def test_registers_workflow_and_bound_activities_and_shuts_down(
         ConfigLoader.configurations["OFTL_AI_TEMPORALURL"] = endpoint
     connect = AsyncMock()
     context = AsyncMock()
-    context.__aexit__.return_value = False
+    context.run.side_effect = asyncio.CancelledError
     factory = MagicMock(return_value=context)
-    wait = AsyncMock(side_effect=asyncio.CancelledError)
     monkeypatch.setattr(worker_module.Client, "connect", connect)
     monkeypatch.setattr(worker_module, "Worker", factory)
-    monkeypatch.setattr(
-        worker_module.asyncio, "Event", MagicMock(return_value=MagicMock(wait=wait))
-    )
 
     with pytest.raises(asyncio.CancelledError):
         asyncio.run(CustomerEnquiryWorker.start())
@@ -70,9 +66,7 @@ def test_registers_workflow_and_bound_activities_and_shuts_down(
     assert isinstance(generator.__self__, MessageGenerator)
     assert generator.__func__ is MessageGenerator.generate_response_message
     assert arguments.kwargs["graceful_shutdown_timeout"].total_seconds() == 30
-    context.__aenter__.assert_awaited_once()
-    context.__aexit__.assert_awaited_once()
-    assert context.__aexit__.await_args.args[0] is asyncio.CancelledError
+    context.run.assert_awaited_once_with()
 
 
 def test_rejects_blank_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -104,7 +98,7 @@ def test_connection_failure_preserves_cause(
 def test_worker_failure_propagates(monkeypatch: pytest.MonkeyPatch) -> None:
     failure = RuntimeError("worker failed internally")
     context = AsyncMock()
-    context.__aenter__.side_effect = failure
+    context.run.side_effect = failure
     monkeypatch.setattr(worker_module.Client, "connect", AsyncMock())
     monkeypatch.setattr(worker_module, "Worker", MagicMock(return_value=context))
     with pytest.raises(RuntimeError, match="worker failed") as error:

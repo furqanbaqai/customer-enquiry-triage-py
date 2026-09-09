@@ -19,4 +19,5 @@ class CustomerEnquiryOrchaestrator:
     @workflow.run
     async def run(self, message: str) -> str:
         """Run the orchestrator workflow."""
+        workflow.logger.info("Starting CustomerEnquiryOrchaestrator workflow")
         return f"Processed message: {message}"

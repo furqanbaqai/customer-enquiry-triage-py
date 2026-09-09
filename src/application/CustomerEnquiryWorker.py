@@ -34,15 +34,15 @@ class CustomerEnquiryWorker:
                 client = await Client.connect(endpoint.strip())
             classifier = MessageClassifier()
             generator = MessageGenerator()
-            async with Worker(
+            worker = Worker(
                 client,
                 task_queue="CUSTOMER.ENQUIRY.REQUEST",
                 workflows=[CustomerEnquiryOrchaestrator],
                 activities=[classifier.classify_message, generator.generate_response_message],
                 graceful_shutdown_timeout=timedelta(seconds=30),
-            ):
-                Logging.info("Temporal worker started on task queue CUSTOMER.ENQUIRY.REQUEST.")
-                await asyncio.Event().wait()
+            )
+            Logging.info("Temporal worker started on task queue CUSTOMER.ENQUIRY.REQUEST.")
+            await worker.run()
         except asyncio.CancelledError:
             Logging.info("Temporal customer enquiry worker stopped.")
             raise

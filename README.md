@@ -76,6 +76,9 @@ the bound activities `MessageClassifier.classify_message` and
 Press Ctrl+C to stop; the worker context performs shutdown with a 30-second activity grace
 period before requesting activity cancellation. The workflow still only echoes its input;
 registering the activities does not make the workflow invoke them.
+Workflow code uses `workflow.logger` for logging. Importing the application `Logging`
+utility loads configuration that calls `Path.resolve()` during import, which Temporal's
+sandbox rejects with a workflow validation error.
 Python callers can use `main("CLIENT")` or `main("WORKER")`; calling `main()` reads CLI arguments.
 
 AI endpoint and prompt requirements below apply to the existing orchestrator, which is
