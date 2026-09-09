@@ -7,10 +7,12 @@ Reference: https://github.com/furqanbaqai/customer-enquiry-triage-py
 
 import asyncio
 import importlib
+from typing import get_type_hints
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from temporalio import workflow
+from temporalio.converter import DataConverter
 from temporalio.testing import ActivityEnvironment
 from temporalio.worker.workflow_sandbox import SandboxedWorkflowRunner
 
@@ -25,10 +27,54 @@ from src.utilities import Logging
 worker_module = importlib.import_module("src.application.CustomerEnquiryWorker")
 
 
+def test_classifier_payload_types_round_trip() -> None:
+    async def round_trip() -> None:
+        converter = DataConverter.default
+        hints = get_type_hints(MessageClassifier.classify_message)
+        values = {
+            "message": {
+                "category": "Accounts",
+                "message": "Help",
+                "meta": {"refNumber": "ENQ-1"},
+                "optional": None,
+                "items": [1, True, 0.5],
+            },
+            "return": {"emotionalType": "Calm", "confidence": 0.9, "details": [None, True]},
+        }
+        for name, value in values.items():
+            payloads = await converter.encode([value])
+            assert await converter.decode(payloads, [hints[name]]) == [value]
+
+    asyncio.run(round_trip())
+
+
 def test_classifier_runs_in_activity_context() -> None:
-    message = {"temp": "test"}
-    result = asyncio.run(ActivityEnvironment().run(MessageClassifier().classify_message, message))
-    assert result == {"message": message}
+    message: dict[str, object] = {"message": "Help with my account", "category": "Accounts"}
+    loader = MagicMock()
+    loader.load_configured_prompt.return_value = "rendered prompt"
+    assessment = {"emotionalType": "Calm"}
+    sender = MagicMock(return_value=assessment)
+    classifier = MessageClassifier(prompt_loader=loader, prompt_sender=sender)
+    result = asyncio.run(ActivityEnvironment().run(classifier.classify_message, message))
+    assert result is assessment
+    loader.load_configured_prompt.assert_called_once_with(
+        "OFTL_AI_PROMPT_1", {"MESSAGE": message["message"], "CATEGORY": message["category"]}
+    )
+    sender.assert_called_once_with("rendered prompt")
+
+
+def test_classifier_propagates_ai_failure() -> None:
+    failure = RuntimeError("AI unavailable")
+    classifier = MessageClassifier(
+        prompt_loader=MagicMock(), prompt_sender=MagicMock(side_effect=failure)
+    )
+    with pytest.raises(RuntimeError, match="AI unavailable") as error:
+        asyncio.run(
+            ActivityEnvironment().run(
+                classifier.classify_message, {"message": "Help", "category": "Accounts"}
+            )
+        )
+    assert error.value is failure
 
 
 def test_parser_handles_invalid_json_in_activity_context() -> None:

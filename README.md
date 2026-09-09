@@ -87,6 +87,16 @@ workflow task and activity timeouts still apply while paused. A sandbox warning 
 Use `workflow.logger` inside workflows and `activity.logger` inside activities. Using the
 workflow logger in an activity raises `Not in workflow event loop` and can trigger retries.
 
+`MessageClassifier.classify_message` passes the parsed enquiry dictionary to
+`_getAIAssesment` and returns its AI response dictionary. The helper renders
+`OFTL_AI_PROMPT_1` with `MESSAGE` and `CATEGORY`, then calls `OpenAIUtility.callJson`.
+Blocking prompt loading and AI calls run in a background thread. DEBUG logging includes
+the generated prompt and assessment. The workflow passes activity imports through the
+sandbox and schedules the classifier method without constructing its dependencies there.
+The activity input and return annotations use `dict[str, Any]` because Temporal's default
+payload converter cannot decode values annotated as `object`. Internal helpers may retain
+`dict[str, object]`; they do not cross the Temporal serialization boundary.
+
 AI endpoint and prompt requirements below apply to the existing orchestrator, which is
 currently disconnected from the message callback.
 

@@ -8,7 +8,7 @@ from temporalio import activity
 class RequestMessageParser:
     """Parse and validate enquiry request messages."""
 
-    @activity.defn
+    @activity.defn(name="Parse and validate incoming customer enquiry request message")
     async def parse_request_message(self, request: str) -> dict | None:
         """Return the parsed, schema-valid request, or None on error."""
         try:
