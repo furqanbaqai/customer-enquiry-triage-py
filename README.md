@@ -96,6 +96,16 @@ sandbox and schedules the classifier method without constructing its dependencie
 The activity input and return annotations use `dict[str, Any]` because Temporal's default
 payload converter cannot decode values annotated as `object`. Internal helpers may retain
 `dict[str, object]`; they do not cross the Temporal serialization boundary.
+After classification, the workflow returns the dictionary from
+`ResponseMessageUtility.generate_response_message(parsed_message, classification, None,
+"0000", "Success")`. The envelope includes original enquiry data, classification, and
+success metadata; it omits `aiGeneratedResponse`. A parsing rejection still returns `None`.
+
+`MessageGenerator.generate_response_message(message, emotions)` calls `_getAIResponseMessage`
+in a background thread and returns the AI response dictionary. It renders `OFTL_AI_PROMPT_2`
+using `INPUT_MESSAGE`, `INPUT_EMOTION`, and `PRODUCT_INFORMATION` (the enquiry category),
+then calls `OpenAIUtility.callJson`. It uses `activity.logger` and supports injected prompt
+loading and AI calls like `MessageClassifier`. The workflow does not yet schedule this activity.
 
 AI endpoint and prompt requirements below apply to the existing orchestrator, which is
 currently disconnected from the message callback.

@@ -27,6 +27,31 @@ from src.utilities import Logging
 worker_module = importlib.import_module("src.application.CustomerEnquiryWorker")
 
 
+def test_workflow_returns_success_envelope(monkeypatch: pytest.MonkeyPatch) -> None:
+    original = {"meta": {"refNumber": "ENQ-1"}, "message": "Help", "category": "Accounts"}
+    classification = {"emotionalType": "Calm"}
+    monkeypatch.setattr(workflow, "logger", MagicMock())
+    monkeypatch.setattr(workflow, "execute_activity", AsyncMock(return_value=original))
+    classify = AsyncMock(return_value=classification)
+    monkeypatch.setattr(workflow, "execute_activity_method", classify)
+    result = asyncio.run(CustomerEnquiryOrchaestrator().run("request JSON"))
+    assert result == {
+        "meta": {"refNumber": "ENQ-1", "responseCode": "0000", "responseDescription": "Success"},
+        "orignalMessage": {"message": "Help", "category": "Accounts"},
+        "aiAssesment": classification,
+    }
+    assert classify.call_args.args[1] is original
+    assert original["meta"] == {"refNumber": "ENQ-1"}
+
+    async def round_trip() -> None:
+        converter = DataConverter.default
+        payloads = await converter.encode([result])
+        hint = get_type_hints(CustomerEnquiryOrchaestrator.run)["return"]
+        assert await converter.decode(payloads, [hint]) == [result]
+
+    asyncio.run(round_trip())
+
+
 def test_classifier_payload_types_round_trip() -> None:
     async def round_trip() -> None:
         converter = DataConverter.default
