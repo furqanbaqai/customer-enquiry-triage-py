@@ -13,6 +13,7 @@ from temporalio.worker import Worker
 
 from src.application.activities.message_classifier import MessageClassifier
 from src.application.activities.message_generator import MessageGenerator
+from src.application.activities.message_parser import RequestMessageParser
 from src.application.CustomerEnquiryOrchestrator_v2 import CustomerEnquiryOrchaestrator
 from src.config import ConfigLoader
 from src.utilities import Logging
@@ -34,11 +35,16 @@ class CustomerEnquiryWorker:
                 client = await Client.connect(endpoint.strip())
             classifier = MessageClassifier()
             generator = MessageGenerator()
+            parser = RequestMessageParser()
             worker = Worker(
                 client,
                 task_queue="CUSTOMER.ENQUIRY.REQUEST",
                 workflows=[CustomerEnquiryOrchaestrator],
-                activities=[classifier.classify_message, generator.generate_response_message],
+                activities=[
+                    parser.parse_request_message,
+                    classifier.classify_message,
+                    generator.generate_response_message,
+                ],
                 graceful_shutdown_timeout=timedelta(seconds=30),
             )
             Logging.info("Temporal worker started on task queue CUSTOMER.ENQUIRY.REQUEST.")

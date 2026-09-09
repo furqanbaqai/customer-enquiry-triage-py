@@ -81,6 +81,12 @@ utility loads configuration that calls `Path.resolve()` during import, which Tem
 sandbox rejects with a workflow validation error.
 Python callers can use `main("CLIENT")` or `main("WORKER")`; calling `main()` reads CLI arguments.
 
+The VS Code worker launch sets `TEMPORAL_DEBUG=1` for breakpoint debugging. Server-side
+workflow task and activity timeouts still apply while paused. A sandbox warning mentioning
+`_pydevd_bundle` indicates a debugger import; inspect subsequent exceptions for task failures.
+Use `workflow.logger` inside workflows and `activity.logger` inside activities. Using the
+workflow logger in an activity raises `Not in workflow event loop` and can trigger retries.
+
 AI endpoint and prompt requirements below apply to the existing orchestrator, which is
 currently disconnected from the message callback.
 

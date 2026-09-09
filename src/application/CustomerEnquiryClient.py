@@ -96,9 +96,10 @@ class CustomerEnquiryClient:
                 json.dumps(payload, ensure_ascii=False),
                 id=workflow_id,
                 task_queue="CUSTOMER.ENQUIRY.REQUEST",
-                id_reuse_policy=WorkflowIDReusePolicy.REJECT_DUPLICATE,
+                id_reuse_policy=WorkflowIDReusePolicy.ALLOW_DUPLICATE,
                 execution_timeout=timedelta(seconds=300),
-                rpc_timeout=timedelta(seconds=30),
+                task_timeout=timedelta(seconds=300),
+                rpc_timeout=timedelta(seconds=60),
             )
             Logging.info(
                 "Temporal workflow completed successfully for workflow ID %s with result: %s",

@@ -11,16 +11,31 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from temporalio import workflow
+from temporalio.testing import ActivityEnvironment
 from temporalio.worker.workflow_sandbox import SandboxedWorkflowRunner
 
 from src.application.activities.message_classifier import MessageClassifier
 from src.application.activities.message_generator import MessageGenerator
+from src.application.activities.message_parser import RequestMessageParser
 from src.application.CustomerEnquiryOrchestrator_v2 import CustomerEnquiryOrchaestrator
 from src.application.CustomerEnquiryWorker import CustomerEnquiryWorker
 from src.config import ConfigLoader
 from src.utilities import Logging
 
 worker_module = importlib.import_module("src.application.CustomerEnquiryWorker")
+
+
+def test_classifier_runs_in_activity_context() -> None:
+    message = {"temp": "test"}
+    result = asyncio.run(ActivityEnvironment().run(MessageClassifier().classify_message, message))
+    assert result == {"message": message}
+
+
+def test_parser_handles_invalid_json_in_activity_context() -> None:
+    result = asyncio.run(
+        ActivityEnvironment().run(RequestMessageParser().parse_request_message, "invalid json")
+    )
+    assert result is None
 
 
 def test_workflow_loads_in_temporal_sandbox() -> None:
@@ -60,7 +75,9 @@ def test_registers_workflow_and_bound_activities_and_shuts_down(
     assert arguments.args == (connect.return_value,)
     assert arguments.kwargs["task_queue"] == "CUSTOMER.ENQUIRY.REQUEST"
     assert arguments.kwargs["workflows"] == [CustomerEnquiryOrchaestrator]
-    classifier, generator = arguments.kwargs["activities"]
+    parser, classifier, generator = arguments.kwargs["activities"]
+    assert isinstance(parser.__self__, RequestMessageParser)
+    assert parser.__func__ is RequestMessageParser.parse_request_message
     assert isinstance(classifier.__self__, MessageClassifier)
     assert classifier.__func__ is MessageClassifier.classify_message
     assert isinstance(generator.__self__, MessageGenerator)
