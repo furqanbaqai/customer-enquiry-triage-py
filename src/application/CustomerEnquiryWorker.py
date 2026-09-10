@@ -45,7 +45,8 @@ class CustomerEnquiryWorker:
                     classifier.classify_message,
                     generator.generate_response_message,
                 ],
-                graceful_shutdown_timeout=timedelta(seconds=30),
+                graceful_shutdown_timeout=timedelta(minutes=10),
+                max_concurrent_activities=2,
             )
             Logging.info("Temporal worker started on task queue CUSTOMER.ENQUIRY.REQUEST.")
             await worker.run()

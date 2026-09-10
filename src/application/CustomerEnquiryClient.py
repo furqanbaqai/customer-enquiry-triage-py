@@ -97,15 +97,12 @@ class CustomerEnquiryClient:
                 id=workflow_id,
                 task_queue="CUSTOMER.ENQUIRY.REQUEST",
                 id_reuse_policy=WorkflowIDReusePolicy.ALLOW_DUPLICATE,
-                execution_timeout=timedelta(seconds=300),
-                task_timeout=timedelta(seconds=300),
+                execution_timeout=timedelta(seconds=1200),
+                task_timeout=timedelta(seconds=10),
                 rpc_timeout=timedelta(seconds=60),
             )
-            Logging.info(
-                "Temporal workflow completed successfully for workflow ID %s with result: %s",
-                workflow_id,
-                result,
-            )
+            Logging.info("Temporal workflow completed successfully for workflow ID %s", workflow_id)
+            Logging.debug("Temporal workflow result: %s", result)
         except Exception as exception:
             Logging.error("Temporal enquiry execution failed (%s).", type(exception).__name__)
             raise RuntimeError("Temporal enquiry execution failed.") from exception

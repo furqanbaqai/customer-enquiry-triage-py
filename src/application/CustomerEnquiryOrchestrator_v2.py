@@ -55,7 +55,8 @@ class CustomerEnquiryOrchaestrator:
         _classification = await workflow.execute_activity_method(
             MessageClassifier.classify_message,
             parsed_message,
-            start_to_close_timeout=timedelta(seconds=300),
+            start_to_close_timeout=timedelta(minutes=5),
+            schedule_to_close_timeout=timedelta(minutes=9),
             retry_policy=AI_RETRY_POLICY,
         )
         # END;
@@ -67,7 +68,8 @@ class CustomerEnquiryOrchaestrator:
         _ai_response_message = await workflow.execute_activity_method(
             MessageGenerator.generate_response_message,
             args=[parsed_message, emotion_type],
-            start_to_close_timeout=timedelta(seconds=300),
+            start_to_close_timeout=timedelta(minutes=5),
+            schedule_to_close_timeout=timedelta(minutes=9),
             retry_policy=AI_RETRY_POLICY,
         )
         response = ResponseMessageUtility.generate_response_message(
