@@ -20,7 +20,9 @@ class PUSHResponseMessage:
     @activity.defn(
         name="Activity for publishing the completed customer enquiry response to the reply queue"
     )
-    async def push_response_message(self, message: dict[str, Any]) -> dict[str, Any]:
+    async def push_response_message(
+        self, message: dict[str, Any], errorCode: str = "0000", errorMessage: str = "Success"
+    ) -> dict[str, Any]:
         """Publish the enquiry, classification, and generated response to the result queue."""
         activity.logger.info("Response message publishing initiated")
         parsed_message = message["parsed_message"]
@@ -31,6 +33,6 @@ class PUSHResponseMessage:
             parsed_message,
             _classification,
             _ai_response_message,
-            "0000",
-            "Success",
+            errorCode,
+            errorMessage,
         )
