@@ -176,14 +176,36 @@ behavior changes, and ensure the development checks pass.
 ## License
 
 Licensed under the [Apache License 2.0](LICENSE).
-# Temporal response publishing
+## Temporal response publishing
 
-The Temporal workflow parses the enquiry, classifies it, generates the AI response, and then
-invokes `PUSHResponseMessage.push_response_message`. Its single dictionary argument contains
-`parsed_message`, `_classification`, and `_ai_response_message`. The activity calls
-`ResponseMessageUtility.send_response_message` with those values, code `0000`, and description
-`Success`, and returns the published response envelope.
+The Temporal workflow parses the enquiry, classifies it, generates the AI response, and invokes
+`PUSHResponseMessage.push_response_message(message, errorCode, errorMessage)`. The message
+contains `parsed_message`, `_classification`, and `_ai_response_message`; unfinished results
+are `None`. Success uses code `0000` and description `Success`.
+
+After an activity exhausts its retries, times out, or fails without retry, the workflow publishes
+one error response with the original decoded enquiry and available partial results:
+
+| Stage | Code | Description |
+| --- | --- | --- |
+| Parsing/validation | `8100` | Request validation failed |
+| Classification | `8200` | Message classification failed |
+| Response generation | `8300` | Response generation failed |
+| Exception inside workflow processing | `9999` | Unable to process the enquiry |
+
+Invalid requests raise non-retryable activity errors. Schema file access failures remain retryable.
+If no request object can be decoded, the error envelope still contains response metadata. Invalid
+request metadata is preserved in `orignalMessage` rather than copied into response metadata.
+After error publication, the workflow raises a non-retryable `ApplicationError`, retaining the
+processing failure as its cause. Cancellation propagates without publishing a business error.
+
+Publishing uses a separate policy of at most five attempts and a three-minute total deadline.
+If publishing fails, the workflow fails without recursively attempting another error publication.
+An ambiguous MQ failure can still cause duplicate publication; delivery is not exactly once.
+The client allows 25 minutes for the workflow: two minutes for parsing, nine for each AI stage,
+three for publishing, and two minutes of margin. Workflow termination or execution timeout cannot
+be handled by this error-publication path. Existing executions retain their original timeout.
 
 WORKER mode supplies the response utility with an IBM MQ result client and closes it when the
-worker stops. Worker startup therefore requires valid IBM MQ settings. Publishing uses the
-workflow's bounded retry policy; an ambiguous MQ failure can cause duplicate publication.
+worker stops. Worker startup requires valid IBM MQ settings. Before replacing workers serving
+existing executions, validate replay compatibility with their histories or drain those executions.

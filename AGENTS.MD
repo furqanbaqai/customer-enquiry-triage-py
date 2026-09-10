@@ -1,5 +1,21 @@
 # AGENTS.MD
 
+## Error publication update (2026-09-10)
+
+This update supersedes historical echo-workflow descriptions below. The v2 workflow runs parsing,
+classification, generation, and publishing activities. Terminal processing activity failures publish
+codes 8100/8200/8300 by stage; unexpected workflow processing exceptions publish 9999. Original
+decoded request data and partial results are retained. After publication the workflow fails with a
+non-retryable ApplicationError. Cancellation propagates, and publishing failures are not recursively
+published. Parser input failures are non-retryable; schema I/O failures propagate for retry.
+
+Error envelopes always contain response metadata, including when no request object is available.
+Malformed original metadata stays in orignalMessage for error responses. Success metadata validation
+is unchanged. Activity budgets are two minutes for parsing, nine per AI stage, and three for publishing;
+each policy allows at most five attempts. New client submissions allow 25 minutes total. Existing
+executions retain their original timeout; validate replay compatibility or drain them before rollout.
+MQ publication remains susceptible to duplicates after ambiguous failures.
+
 ## Purpose and scope
 
 This repository is an early proof of concept for a long-running Python service that will consume customer enquiries from IBM MQ, classify them through an OpenAI-compatible endpoint, store tracking and history data in SQL Server, and publish classification results to an output queue.

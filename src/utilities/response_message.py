@@ -37,12 +37,21 @@ class ResponseMessageUtility:
         if not isinstance(response_description, str):
             raise TypeError("[ERR-36] The response description must be a string")
 
-        response: dict[str, object] = {}
+        response: dict[str, object] = {
+            "meta": {
+                "responseCode": response_code,
+                "responseDescription": response_description,
+            }
+        }
         if original_message is not None:
             original_copy = dict(original_message)
             meta = original_copy.pop("meta", None)
             if not isinstance(meta, Mapping):
-                raise ValueError("[ERR-37] The original message metadata must be a dictionary")
+                if response_code in ("00", "0000"):
+                    raise ValueError("[ERR-37] The original message metadata must be a dictionary")
+                # Keep malformed metadata in the original error payload without trusting it.
+                original_copy = dict(original_message)
+                meta = {}
             response["meta"] = {
                 **meta,
                 "responseCode": response_code,

@@ -71,7 +71,7 @@ def test_submits_validated_enquiry(
     assert arguments.kwargs["id"] == "customer-enquiry-REF-123"
     assert arguments.kwargs["task_queue"] == "CUSTOMER.ENQUIRY.REQUEST"
     assert arguments.kwargs["id_reuse_policy"] == WorkflowIDReusePolicy.REJECT_DUPLICATE
-    assert arguments.kwargs["execution_timeout"].total_seconds() == 300
+    assert arguments.kwargs["execution_timeout"].total_seconds() == 1500
     assert arguments.kwargs["rpc_timeout"].total_seconds() == 30
 
 
@@ -140,3 +140,11 @@ def test_rejects_active_event_loop(enquiry: dict[str, object], connect: AsyncMoc
 
     asyncio.run(invoke())
     connect.assert_not_awaited()
+
+
+def test_workflow_timeout_reserves_error_publication_budget(
+    enquiry: dict[str, object], connect: AsyncMock
+) -> None:
+    CustomerEnquiryClient.sendToWorkflow(json.dumps(enquiry).encode())
+    timeout = connect.return_value.execute_workflow.call_args.kwargs["execution_timeout"]
+    assert timeout.total_seconds() == 25 * 60

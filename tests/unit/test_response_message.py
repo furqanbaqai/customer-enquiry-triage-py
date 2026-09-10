@@ -53,7 +53,7 @@ def test_omits_none_aggregates() -> None:
         None, None, None, "99", "Unable to process"
     )
 
-    assert response == {}
+    assert response == {"meta": {"responseCode": "99", "responseDescription": "Unable to process"}}
 
 
 def test_omits_only_optional_none_aggregates() -> None:

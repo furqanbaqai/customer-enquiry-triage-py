@@ -97,7 +97,7 @@ class CustomerEnquiryClient:
                 id=workflow_id,
                 task_queue="CUSTOMER.ENQUIRY.REQUEST",
                 id_reuse_policy=WorkflowIDReusePolicy.ALLOW_DUPLICATE,
-                execution_timeout=timedelta(seconds=1200),
+                execution_timeout=timedelta(minutes=25),
                 task_timeout=timedelta(seconds=10),
                 rpc_timeout=timedelta(seconds=60),
             )

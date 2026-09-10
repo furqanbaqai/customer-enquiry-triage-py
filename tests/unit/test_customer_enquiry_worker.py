@@ -13,6 +13,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from temporalio import workflow
 from temporalio.converter import DataConverter
+from temporalio.exceptions import ApplicationError
 from temporalio.testing import ActivityEnvironment
 from temporalio.worker.workflow_sandbox import SandboxedWorkflowRunner
 
@@ -51,7 +52,7 @@ def test_workflow_returns_success_envelope(monkeypatch: pytest.MonkeyPatch) -> N
         MessageGenerator.generate_response_message,
         PUSHResponseMessage.push_response_message,
     ]
-    assert classify.call_args.args[1] == {
+    assert classify.call_args.kwargs["args"][0] == {
         "parsed_message": original,
         "_classification": classification,
         "_ai_response_message": generated,
@@ -118,10 +119,11 @@ def test_classifier_propagates_ai_failure() -> None:
 
 
 def test_parser_handles_invalid_json_in_activity_context() -> None:
-    result = asyncio.run(
-        ActivityEnvironment().run(RequestMessageParser().parse_request_message, "invalid json")
-    )
-    assert result is None
+    with pytest.raises(ApplicationError) as error:
+        asyncio.run(
+            ActivityEnvironment().run(RequestMessageParser().parse_request_message, "invalid json")
+        )
+    assert error.value.non_retryable
 
 
 def test_workflow_loads_in_temporal_sandbox() -> None:
