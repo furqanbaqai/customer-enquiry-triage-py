@@ -91,7 +91,7 @@ class CustomerEnquiryClient:
             async with asyncio.timeout(30):
                 client = await Client.connect(endpoint.strip())
 
-            result = await client.execute_workflow(
+            result = await client.start_workflow(
                 CustomerEnquiryOrchaestrator.run,
                 json.dumps(payload, ensure_ascii=False),
                 id=workflow_id,
@@ -101,7 +101,7 @@ class CustomerEnquiryClient:
                 task_timeout=timedelta(seconds=10),
                 rpc_timeout=timedelta(seconds=60),
             )
-            Logging.info("Temporal workflow completed successfully for workflow ID %s", workflow_id)
+            Logging.info("Temporal message publish for workflow with workflow ID %s", workflow_id)
             Logging.debug("Temporal workflow result: %s", result)
         except Exception as exception:
             Logging.error("Temporal enquiry execution failed (%s).", type(exception).__name__)
