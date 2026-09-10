@@ -14,16 +14,17 @@ from temporalio.worker import Worker
 from src.application.activities.message_classifier import MessageClassifier
 from src.application.activities.message_generator import MessageGenerator
 from src.application.activities.message_parser import RequestMessageParser
+from src.application.activities.push_response_message import PUSHResponseMessage
 from src.application.CustomerEnquiryOrchestrator_v2 import CustomerEnquiryOrchaestrator
 from src.config import ConfigLoader
-from src.utilities import Logging
+from src.utilities import Logging, ResponseMessageUtility
 
 
 class CustomerEnquiryWorker:
     """Run the Temporal worker for the lifetime of WORKER mode."""
 
     @staticmethod
-    async def start() -> None:
+    async def start(response_message_utility: ResponseMessageUtility) -> None:
         """Connect once and poll until cancelled or a worker failure occurs."""
         endpoint = ConfigLoader.get("OFTL_AI_TEMPORALURL", "localhost:7233")
         if not isinstance(endpoint, str) or not endpoint.strip():
@@ -36,6 +37,7 @@ class CustomerEnquiryWorker:
             classifier = MessageClassifier()
             generator = MessageGenerator()
             parser = RequestMessageParser()
+            publisher = PUSHResponseMessage(response_message_utility)
             worker = Worker(
                 client,
                 task_queue="CUSTOMER.ENQUIRY.REQUEST",
@@ -44,6 +46,7 @@ class CustomerEnquiryWorker:
                     parser.parse_request_message,
                     classifier.classify_message,
                     generator.generate_response_message,
+                    publisher.push_response_message,
                 ],
                 graceful_shutdown_timeout=timedelta(minutes=10),
                 max_concurrent_activities=2,

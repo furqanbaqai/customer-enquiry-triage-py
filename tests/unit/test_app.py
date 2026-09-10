@@ -9,6 +9,7 @@ from src import app
 from src.application.CustomerEnquiryWorker import CustomerEnquiryWorker
 from src.config import ConfigLoader
 from src.infrastructure import IBMMQSettings
+from src.utilities import ResponseMessageUtility
 
 
 def test_display_project_information(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -68,7 +69,10 @@ def test_dispatch_message_copies_mq_buffer_before_submitting() -> None:
 
 
 @pytest.mark.parametrize("from_cli", [False, True])
-def test_worker_mode_does_not_start_client(monkeypatch: pytest.MonkeyPatch, from_cli: bool) -> None:
+def test_worker_mode_composes_and_closes_result_client(
+    monkeypatch: pytest.MonkeyPatch, from_cli: bool
+) -> None:
+    monkeypatch.setattr(IBMMQSettings, "from_config", MagicMock())
     client_factory = MagicMock()
     configuration_loader = MagicMock()
     start_worker = AsyncMock()
@@ -81,9 +85,12 @@ def test_worker_mode_does_not_start_client(monkeypatch: pytest.MonkeyPatch, from
 
     app.main(None if from_cli else "WORKER")
 
-    client_factory.assert_not_called()
+    client_factory.assert_called_once()
+    client_factory.return_value.start_consumer.assert_not_called()
+    client_factory.return_value.close.assert_called_once_with()
     configuration_loader.assert_called_once_with()
-    start_worker.assert_awaited_once_with()
+    start_worker.assert_awaited_once()
+    assert isinstance(start_worker.call_args.args[0], ResponseMessageUtility)
 
 
 def test_cli_client_mode(monkeypatch: pytest.MonkeyPatch) -> None:

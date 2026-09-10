@@ -19,10 +19,11 @@ from temporalio.worker.workflow_sandbox import SandboxedWorkflowRunner
 from src.application.activities.message_classifier import MessageClassifier
 from src.application.activities.message_generator import MessageGenerator
 from src.application.activities.message_parser import RequestMessageParser
+from src.application.activities.push_response_message import PUSHResponseMessage
 from src.application.CustomerEnquiryOrchestrator_v2 import CustomerEnquiryOrchaestrator
 from src.application.CustomerEnquiryWorker import CustomerEnquiryWorker
 from src.config import ConfigLoader
-from src.utilities import Logging
+from src.utilities import Logging, ResponseMessageUtility
 
 worker_module = importlib.import_module("src.application.CustomerEnquiryWorker")
 
@@ -32,15 +33,29 @@ def test_workflow_returns_success_envelope(monkeypatch: pytest.MonkeyPatch) -> N
     classification = {"emotionalType": "Calm"}
     monkeypatch.setattr(workflow, "logger", MagicMock())
     monkeypatch.setattr(workflow, "execute_activity", AsyncMock(return_value=original))
-    classify = AsyncMock(return_value=classification)
+    generated = {"response": "We can help"}
+    envelope = ResponseMessageUtility.generate_response_message(
+        original, classification, generated, "0000", "Success"
+    )
+    classify = AsyncMock(side_effect=[classification, generated, envelope])
     monkeypatch.setattr(workflow, "execute_activity_method", classify)
     result = asyncio.run(CustomerEnquiryOrchaestrator().run("request JSON"))
     assert result == {
         "meta": {"refNumber": "ENQ-1", "responseCode": "0000", "responseDescription": "Success"},
         "orignalMessage": {"message": "Help", "category": "Accounts"},
         "aiAssesment": classification,
+        "aiGeneratedResponse": generated,
     }
-    assert classify.call_args.args[1] is original
+    assert [call.args[0] for call in classify.await_args_list] == [
+        MessageClassifier.classify_message,
+        MessageGenerator.generate_response_message,
+        PUSHResponseMessage.push_response_message,
+    ]
+    assert classify.call_args.args[1] == {
+        "parsed_message": original,
+        "_classification": classification,
+        "_ai_response_message": generated,
+    }
     assert original["meta"] == {"refNumber": "ENQ-1"}
 
     async def round_trip() -> None:
@@ -138,7 +153,7 @@ def test_registers_workflow_and_bound_activities_and_shuts_down(
     monkeypatch.setattr(worker_module, "Worker", factory)
 
     with pytest.raises(asyncio.CancelledError):
-        asyncio.run(CustomerEnquiryWorker.start())
+        asyncio.run(CustomerEnquiryWorker.start(MagicMock(spec=ResponseMessageUtility)))
 
     connect.assert_awaited_once_with(endpoint.strip() if endpoint else "localhost:7233")
     factory.assert_called_once()
@@ -146,14 +161,16 @@ def test_registers_workflow_and_bound_activities_and_shuts_down(
     assert arguments.args == (connect.return_value,)
     assert arguments.kwargs["task_queue"] == "CUSTOMER.ENQUIRY.REQUEST"
     assert arguments.kwargs["workflows"] == [CustomerEnquiryOrchaestrator]
-    parser, classifier, generator = arguments.kwargs["activities"]
+    parser, classifier, generator, publisher = arguments.kwargs["activities"]
     assert isinstance(parser.__self__, RequestMessageParser)
     assert parser.__func__ is RequestMessageParser.parse_request_message
     assert isinstance(classifier.__self__, MessageClassifier)
     assert classifier.__func__ is MessageClassifier.classify_message
     assert isinstance(generator.__self__, MessageGenerator)
     assert generator.__func__ is MessageGenerator.generate_response_message
-    assert arguments.kwargs["graceful_shutdown_timeout"].total_seconds() == 30
+    assert isinstance(publisher.__self__, PUSHResponseMessage)
+    assert publisher.__func__ is PUSHResponseMessage.push_response_message
+    assert arguments.kwargs["graceful_shutdown_timeout"].total_seconds() == 600
     context.run.assert_awaited_once_with()
 
 
@@ -162,7 +179,7 @@ def test_rejects_blank_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
     connect = AsyncMock()
     monkeypatch.setattr(worker_module.Client, "connect", connect)
     with pytest.raises(ValueError, match="OFTL_AI_TEMPORALURL"):
-        asyncio.run(CustomerEnquiryWorker.start())
+        asyncio.run(CustomerEnquiryWorker.start(MagicMock(spec=ResponseMessageUtility)))
     connect.assert_not_awaited()
 
 
@@ -177,7 +194,7 @@ def test_connection_failure_preserves_cause(
     factory = MagicMock()
     monkeypatch.setattr(worker_module, "Worker", factory)
     with pytest.raises(RuntimeError, match="worker failed") as error:
-        asyncio.run(CustomerEnquiryWorker.start())
+        asyncio.run(CustomerEnquiryWorker.start(MagicMock(spec=ResponseMessageUtility)))
     assert error.value.__cause__ is failure
     assert "private connection details" not in caplog.text
     factory.assert_not_called()
@@ -190,5 +207,29 @@ def test_worker_failure_propagates(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(worker_module.Client, "connect", AsyncMock())
     monkeypatch.setattr(worker_module, "Worker", MagicMock(return_value=context))
     with pytest.raises(RuntimeError, match="worker failed") as error:
-        asyncio.run(CustomerEnquiryWorker.start())
+        asyncio.run(CustomerEnquiryWorker.start(MagicMock(spec=ResponseMessageUtility)))
     assert error.value.__cause__ is failure
+
+
+@pytest.mark.parametrize("fails", [False, True])
+def test_push_response_activity(fails: bool) -> None:
+    sender = MagicMock()
+    publisher = PUSHResponseMessage(ResponseMessageUtility(sender))
+    original = {"meta": {"refNumber": "ENQ-1"}, "message": "Help"}
+    classification = {"emotionalType": "Calm"}
+    generated = {"response": "We can help"}
+    payload = {
+        "parsed_message": original,
+        "_classification": classification,
+        "_ai_response_message": generated,
+    }
+    if fails:
+        sender.put_result_message.side_effect = RuntimeError("MQ unavailable")
+        with pytest.raises(RuntimeError, match="MQ unavailable"):
+            asyncio.run(ActivityEnvironment().run(publisher.push_response_message, payload))
+    else:
+        result = asyncio.run(ActivityEnvironment().run(publisher.push_response_message, payload))
+        assert result == ResponseMessageUtility.generate_response_message(
+            original, classification, generated, "0000", "Success"
+        )
+        sender.put_result_message.assert_called_once_with(result)

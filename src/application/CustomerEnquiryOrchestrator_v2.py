@@ -8,7 +8,7 @@ with workflow.unsafe.imports_passed_through():
     from src.application.activities.message_classifier import MessageClassifier
     from src.application.activities.message_generator import MessageGenerator
     from src.application.activities.message_parser import RequestMessageParser
-    from src.utilities.response_message import ResponseMessageUtility
+    from src.application.activities.push_response_message import PUSHResponseMessage
 
 
 @workflow.defn(name="Workflow for orchestrating the processing of a customer enquiry message")
@@ -72,8 +72,16 @@ class CustomerEnquiryOrchaestrator:
             schedule_to_close_timeout=timedelta(minutes=9),
             retry_policy=AI_RETRY_POLICY,
         )
-        response = ResponseMessageUtility.generate_response_message(
-            parsed_message, _classification, _ai_response_message, "0000", "Success"
+
+        response: dict[str, Any] = await workflow.execute_activity_method(
+            PUSHResponseMessage.push_response_message,
+            {
+                "parsed_message": parsed_message,
+                "_classification": _classification,
+                "_ai_response_message": _ai_response_message,
+            },
+            start_to_close_timeout=timedelta(seconds=30),
+            retry_policy=AI_RETRY_POLICY,
         )
         workflow.logger.info("CustomerEnquiryOrchaestrator workflow completed successfully")
         return response

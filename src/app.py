@@ -23,7 +23,7 @@ from src.application.CustomerEnquiryClient import CustomerEnquiryClient
 from src.application.CustomerEnquiryWorker import CustomerEnquiryWorker
 from src.config import ConfigLoader
 from src.infrastructure import IBMMQClient, IBMMQSettings
-from src.utilities import Logging
+from src.utilities import Logging, ResponseMessageUtility
 
 _PROJECT_FILE = Path(__file__).resolve().parents[1] / "pyproject.toml"
 
@@ -87,10 +87,13 @@ def main(mode: str | None = None) -> None:
     if arguments.mode == "CLIENT":
         _run_mq_client()
     elif arguments.mode == "WORKER":
+        result_client = IBMMQClient(IBMMQSettings.from_config())
         try:
-            asyncio.run(CustomerEnquiryWorker.start())
+            asyncio.run(CustomerEnquiryWorker.start(ResponseMessageUtility(result_client)))
         except KeyboardInterrupt:
             Logging.info("[CEP] Customer enquiry Temporal worker stopped by user.")
+        finally:
+            result_client.close()
     else:
         Logging.error("Unknown mode: %s", arguments.mode)
         return

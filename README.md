@@ -176,3 +176,14 @@ behavior changes, and ensure the development checks pass.
 ## License
 
 Licensed under the [Apache License 2.0](LICENSE).
+# Temporal response publishing
+
+The Temporal workflow parses the enquiry, classifies it, generates the AI response, and then
+invokes `PUSHResponseMessage.push_response_message`. Its single dictionary argument contains
+`parsed_message`, `_classification`, and `_ai_response_message`. The activity calls
+`ResponseMessageUtility.send_response_message` with those values, code `0000`, and description
+`Success`, and returns the published response envelope.
+
+WORKER mode supplies the response utility with an IBM MQ result client and closes it when the
+worker stops. Worker startup therefore requires valid IBM MQ settings. Publishing uses the
+workflow's bounded retry policy; an ambiguous MQ failure can cause duplicate publication.
