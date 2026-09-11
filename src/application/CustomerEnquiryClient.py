@@ -78,6 +78,15 @@ class CustomerEnquiryClient:
             Logging.error("OFTL_AI_TEMPORALURL must be a non-empty string.")
             raise ValueError("OFTL_AI_TEMPORALURL must be a non-empty string.")
 
+        reuse_policy_name = ConfigLoader.get("OFTL_AI_TEMPORALREUSE_POLICY", "ALLOW_DUPLICATE")
+        try:
+            reuse_policy = WorkflowIDReusePolicy[reuse_policy_name.strip().upper()]
+        except KeyError as exception:
+            Logging.error("Invalid OFTL_AI_TEMPORALREUSE_POLICY value: %s.", reuse_policy_name)
+            raise ValueError(
+                "OFTL_AI_TEMPORALREUSE_POLICY must be a valid workflow ID reuse policy."
+            ) from exception
+
         meta = payload.get("meta")
         reference = meta.get("refNumber") if isinstance(meta, dict) else None
         if not isinstance(reference, str) or not reference:
@@ -96,7 +105,7 @@ class CustomerEnquiryClient:
                 json.dumps(payload, ensure_ascii=False),
                 id=workflow_id,
                 task_queue="CUSTOMER.ENQUIRY.REQUEST",
-                id_reuse_policy=WorkflowIDReusePolicy.ALLOW_DUPLICATE,
+                id_reuse_policy=reuse_policy,
                 execution_timeout=timedelta(minutes=25),
                 task_timeout=timedelta(seconds=10),
                 rpc_timeout=timedelta(seconds=60),
