@@ -27,7 +27,7 @@ class CustomerEnquiryClient:
 
     @staticmethod
     def sendToWorkflow(payload: bytes) -> None:
-        """Validate UTF-8 JSON and wait for workflow completion; raise on failure.
+        """Validate UTF-8 JSON and wait for workflow start acceptance; raise on failure.
 
         Call from a synchronous thread without a running asyncio event loop.
         """

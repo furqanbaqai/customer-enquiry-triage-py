@@ -1,117 +1,104 @@
 # Customer Enquiry Triage
 
-Python proof-of-concept service that consumes customer enquiries from IBM MQ and dispatches
-them to a worker callback. The callback currently logs receipt and has a placeholder for a
-replacement processing library or class. The existing AI orchestrator is no longer invoked
-by the service entry point.
+Python proof of concept that consumes customer enquiries from IBM MQ, starts Temporal workflows,
+classifies enquiries through an OpenAI-compatible endpoint, generates product-informed responses,
+and publishes response envelopes to IBM MQ.
 
-## Features
+## Runtime
 
-The repository includes the following components; validation, AI processing, and result
-publishing require explicitly invoking the existing orchestrator or wiring a replacement handler.
+Run two processes: CLIENT consumes requests and submits workflows; WORKER executes parsing,
+classification, generation, and publication activities on `CUSTOMER.ENQUIRY.REQUEST`.
+The active workflow is `CustomerEnquiryOrchaestrator` in `CustomerEnquiryOrchestrator_v2.py`.
+This Temporal workflow is the sole enquiry orchestration implementation.
 
-- Asynchronous IBM MQ consumption with worker-isolated processing
-- JSON Schema validation for incoming enquiries
-- Markdown prompt templates with `{{VARIABLE_NAME}}` substitution
-- Configurable OpenAI-compatible Chat Completions client
-- Two-stage AI assessment and emotion-aware response generation
-- Combined response-envelope publishing to IBM MQ
-- Environment-based configuration and structured logging
+The client validates UTF-8 JSON against the bundled request schema, including email/date-time
+formats, then uses `start_workflow`. It waits for start acceptance, not processing completion.
+Each submission creates a fresh Temporal client/event loop. IDs are
+`CE-{channel.upper()}-{refNumber}`. The configurable reuse policy defaults to `ALLOW_DUPLICATE`;
+other accepted names are `ALLOW_DUPLICATE_FAILED_ONLY`, `REJECT_DUPLICATE`, and
+`TERMINATE_IF_RUNNING`. Names are trimmed and case-insensitive.
 
-> [!NOTE]
-> SQL Server persistence, backout publishing, duplicate detection, and transactional delivery
-> are not implemented. Known failure-handling and shutdown gaps are recorded in
-> [AGENTS.MD](AGENTS.MD#context-snapshot-2026-09-06).
+Client timeouts are 30 seconds for connection, 60 seconds for the start RPC, 25 minutes for
+workflow execution, and 10 seconds for a workflow task. The worker connects once, registers
+four activities, limits concurrent activities to two, and configures ten minutes for graceful
+shutdown. WORKER mode requires MQ settings and closes its result adapter on exit.
 
-## Requirements
+## Prerequisites
 
-- Python 3.12 or newer
-- [`uv`](https://docs.astral.sh/uv/)
-- IBM MQ C client runtime and SDK components
-- Access to IBM MQ and an OpenAI-compatible endpoint
+Prepare the following before running CLIENT and WORKER:
+
+| Prerequisite | Required setup |
+| --- | --- |
+| Python | Python 3.12 or newer; `.python-version` selects Python 3.13. |
+| uv | Install the `uv` package/environment manager and run commands from the project directory. |
+| Python libraries | Run `uv sync --dev` to install the dependencies from `uv.lock`, including the required `temporalio` and `ibmmq` libraries. |
+| IBM MQ client | Install the IBM MQ C client runtime and SDK components needed by the `ibmmq` Python adapter on each application host. |
+| IBM MQ service | Provide a reachable queue manager, listener, channel, credentials, and request/result queues. CLIENT needs permission to read requests; WORKER needs permission to publish results. Configure the `OFTL_IMQ_*` settings. |
+| Temporal service | Provide a running Temporal server reachable by both processes through `OFTL_AI_TEMPORALURL` (default `localhost:7233`). Installing `temporalio` installs the Python SDK; the Temporal server must run separately. The current connection code uses the default namespace and does not configure TLS or API-key authentication. |
+| AI endpoint | Provide a reachable OpenAI-compatible Chat Completions endpoint and token through `OFTL_OPENAI_URL` and `OFTL_OPENAI_APITOKEN`. The application sends model name `default`. |
+| Prompt and product files | Supply compatible templates through `OFTL_AI_PROMPT_1` and `OFTL_AI_PROMPT_2`, and retain the `prompts/product_json/` catalogue. See the prompt compatibility note below before using `.env.example`. |
+| Application configuration | Create `.env` from `.env.example` and replace example values. Run both CLIENT and WORKER for end-to-end processing. |
+
+The runtime Python dependencies declared in [pyproject.toml](pyproject.toml) are:
+
+| Library | Declared minimum | Purpose |
+| --- | --- | --- |
+| `temporalio` | `1.32.0` | Temporal clients, workers, workflows, activities, and retry policies. |
+| `ibmmq` | `2.1.0` | IBM MQ request consumption and response publication. |
+| `openai` | `3.3.1` | Calls to the OpenAI-compatible AI endpoint. |
+| `jsonschema` | `4.23.0` | Request schema validation. |
+| `rfc3339-validator` | `0.1.4` | Date-time format validation. |
+| `python-dotenv` | `1.2.3` | Loading `.env` configuration. |
+| `lingua-language-detector` | `2.2.0` | Language detection utility. |
+| `environs` | `15.1.0` | Declared configuration dependency; the current loader uses `python-dotenv`. |
+| `sqlalchemy` | `2.0.52` | Declared persistence dependency; database persistence is not implemented. |
+
+`uv.lock` records the resolved versions. The development group additionally installs `pytest`,
+`pytest-cov`, `ruff`, `mypy`, and `types-jsonschema`. SQL Server is not required by the current
+runtime because no database operations are implemented.
+
+## Temporal Python library
+
+The application uses [`temporalio`](https://github.com/temporalio/sdk-python), the official
+Temporal Python SDK, to submit workflows, host workers, define workflows and activities,
+and configure retries and timeouts. The dependency is declared as `temporalio>=1.32.0` in
+[pyproject.toml](pyproject.toml); `uv sync --dev` installs the version resolved in `uv.lock`.
+A running Temporal service is required separately from the Python library.
+
+References:
+
+- [Python SDK source and usage guide](https://github.com/temporalio/sdk-python)
+- [Python SDK API reference](https://python.temporal.io/)
+- [Python application development guide](https://docs.temporal.io/develop/python)
+- [temporalio package on PyPI](https://pypi.org/project/temporalio/)
 
 ## Quick start
 
+Complete the prerequisites above, then install dependencies and configure the application:
+
 ```powershell
-git clone https://github.com/furqanbaqai/customer-enquiry-triage-py.git
-cd customer-enquiry-triage-py
 uv sync --dev
 Copy-Item .env.example .env
-```
-
-Update `.env` with your MQ connection values, then start the service. API and prompt settings
-are needed when invoking the existing AI orchestrator:
-
-```powershell
+# Configure MQ, Temporal, AI, and prompt settings before starting.
 uv run python -m src CLIENT
+# In a second terminal:
+uv run python -m src WORKER
 ```
 
-The installed command is equivalent:
-
-```powershell
-uv run customer-enquiry-triage CLIENT
-```
+Installed commands are `customer-enquiry-triage CLIENT`, `customer-enquiry-triage WORKER`,
+`customer-enquiry-triage-client`, and `customer-enquiry-triage-worker` (run through `uv run`).
+Python callers can use `main("CLIENT")` or `main("WORKER")`.
 
 ## Configuration
 
-`CustomerEnquiryClient.sendToWorkflow(payload)` in `src/application/CustomerEnquiryClient.py`
-accepts UTF-8 JSON bytes, validates the enquiry schema (including email and date-time formats),
-and sends the complete enquiry as a JSON string to the v2 Temporal workflow. Call it from a
-synchronous thread; it waits for workflow completion. The MQ callback does not yet invoke it.
-`OFTL_AI_TEMPORALURL` is optional and defaults to `localhost:7233`. A Temporal worker must
-register `CustomerEnquiryOrchaestrator` from `CustomerEnquiryOrchestrator_v2.py` on task queue
-`CUSTOMER.ENQUIRY.REQUEST`. Workflow IDs use `customer-enquiry-<meta.refNumber>` and reject
-duplicate executions while Temporal retains their history. Connection and RPC timeouts are
-30 seconds, workflow execution is limited to 300 seconds, and the client wait to 330 seconds.
-Invalid input raises `ValueError`; schema-loading and Temporal failures raise `RuntimeError`
-with the original cause preserved. Logs omit payloads and workflow results. A client timeout
-does not guarantee that the server-side workflow has stopped.
-
-The required mode is `CLIENT` or `WORKER`. `CLIENT` starts the IBM MQ consumer.
-`uv run python -m src WORKER` starts `CustomerEnquiryWorker` in the current process.
-It connects once to `OFTL_AI_TEMPORALURL` (default `localhost:7233`) and polls
-`CUSTOMER.ENQUIRY.REQUEST`, registering the v2 `CustomerEnquiryOrchaestrator` workflow and
-the bound activities `MessageClassifier.classify_message` and
-`MessageGenerator.generate_response_message`. Connection startup has a 30-second timeout.
-Press Ctrl+C to stop; the worker context performs shutdown with a 30-second activity grace
-period before requesting activity cancellation. The workflow still only echoes its input;
-registering the activities does not make the workflow invoke them.
-Workflow code uses `workflow.logger` for logging. Importing the application `Logging`
-utility loads configuration that calls `Path.resolve()` during import, which Temporal's
-sandbox rejects with a workflow validation error.
-Python callers can use `main("CLIENT")` or `main("WORKER")`; calling `main()` reads CLI arguments.
-
-The VS Code worker launch sets `TEMPORAL_DEBUG=1` for breakpoint debugging. Server-side
-workflow task and activity timeouts still apply while paused. A sandbox warning mentioning
-`_pydevd_bundle` indicates a debugger import; inspect subsequent exceptions for task failures.
-Use `workflow.logger` inside workflows and `activity.logger` inside activities. Using the
-workflow logger in an activity raises `Not in workflow event loop` and can trigger retries.
-
-`MessageClassifier.classify_message` passes the parsed enquiry dictionary to
-`_getAIAssesment` and returns its AI response dictionary. The helper renders
-`OFTL_AI_PROMPT_1` with `MESSAGE` and `CATEGORY`, then calls `OpenAIUtility.callJson`.
-Blocking prompt loading and AI calls run in a background thread. DEBUG logging includes
-the generated prompt and assessment. The workflow passes activity imports through the
-sandbox and schedules the classifier method without constructing its dependencies there.
-The activity input and return annotations use `dict[str, Any]` because Temporal's default
-payload converter cannot decode values annotated as `object`. Internal helpers may retain
-`dict[str, object]`; they do not cross the Temporal serialization boundary.
-After classification, the workflow returns the dictionary from
-`ResponseMessageUtility.generate_response_message(parsed_message, classification, None,
-"0000", "Success")`. The envelope includes original enquiry data, classification, and
-success metadata; it omits `aiGeneratedResponse`. A parsing rejection still returns `None`.
-
-`MessageGenerator.generate_response_message(message, emotions)` calls `_getAIResponseMessage`
-in a background thread and returns the AI response dictionary. It renders `OFTL_AI_PROMPT_2`
-using `INPUT_MESSAGE`, `INPUT_EMOTION`, and `PRODUCT_INFORMATION` (the enquiry category),
-then calls `OpenAIUtility.callJson`. It uses `activity.logger` and supports injected prompt
-loading and AI calls like `MessageClassifier`. The workflow does not yet schedule this activity.
-
-AI endpoint and prompt requirements below apply to the existing orchestrator, which is
-currently disconnected from the message callback.
+Process environment overrides `.env`. AI endpoint and prompt settings are required for active
+worker processing. MQ settings are required in both modes. Configuration is not comprehensively
+validated at startup; AI and prompt validation occurs when used.
 
 | Variable | Required | Default or example |
 | --- | --- | --- |
+| `OFTL_AI_TEMPORALURL` | No | `localhost:7233` |
+| `OFTL_AI_TEMPORALREUSE_POLICY` | No | `ALLOW_DUPLICATE` |
 | `OFTL_OPENAI_URL` | Yes | OpenAI-compatible base or `/chat/completions` URL |
 | `OFTL_OPENAI_APITOKEN` | Yes | No default |
 | `OFTL_OPENAI_TEMPERATURE` | No | `0.1` |
@@ -136,19 +123,60 @@ currently disconnected from the message callback.
 See [`.env.example`](.env.example) for the complete configuration. Never commit `.env` or real
 credentials.
 
-## Prompt templates
+## Prompts and product information
 
-Templates are UTF-8 Markdown files with uppercase placeholders such as `{{MESSAGE}}`. Paths are
-resolved from the service working directory. Missing files, blank templates, and unresolved
-placeholders fail with a clear error.
+Classification supplies `MESSAGE` and `CATEGORY`. Generation supplies `INPUT_MESSAGE`,
+`INPUT_EMOTION`, and `PRODUCT_INFORMATION`. The classifier output must contain `emotionalType`
+and `product_code`; the generator loads `prompts/product_json/{product_code}.json` and supplies
+its JSON content to the response template. The catalogue contains 99 files; no vector retrieval
+is implemented. Templates are cached by resolved path per loader.
 
-Assessment receives `MESSAGE` and `CATEGORY`. Response generation receives `INPUT_MESSAGE`,
-`INPUT_EMOTION`, and `PRODUCT_INFORMATION`; the last currently contains the request category,
-not a product catalogue lookup. Templates are cached for the lifetime of the prompt loader.
+The unversioned classification template selected by `.env.example` expects additional placeholders
+that the active classifier does not supply. Select a compatible template before running; the
+example currently fails prompt rendering. Product codes and AI output shapes need stronger
+validation. OpenAIUtility currently validates only that the response is a JSON object.
 
-## Development
+## Outcomes and retries
 
-Run the quality checks before submitting a change:
+Success publishes response code `0000`. Terminal processing activity failures publish an error
+with the original decoded request and any partial results, then fail the workflow with a
+non-retryable ApplicationError.
+
+| Stage | Per-attempt timeout | Total budget | Error code |
+| --- | --- | --- | --- |
+| Parsing | 30 seconds | 2 minutes | `8100` |
+| Classification | 5 minutes | 9 minutes | `8200` |
+| Generation | 5 minutes | 9 minutes | `8300` |
+| Publication | 30 seconds | 3 minutes | No recursive publication |
+
+Each policy allows up to five attempts, with exponential backoff from two to ten seconds.
+Input validation errors in the parser are non-retryable; schema I/O failures remain retryable.
+The activity parser does not enforce formats as the client does. Client validation failures occur
+before workflow creation and only get logged by the MQ callback.
+
+Unexpected exceptions in workflow processing publish `9999`. Cancellation propagates without
+business-error publication. Publishing failures are not recursively published. Termination and
+execution timeout cannot be handled through this publication path. Existing executions retain
+their original timeout; replay-check histories or drain executions before incompatible rollout.
+
+Response wire keys retain their existing spellings: `meta`, `orignalMessage`, `aiAssesment`,
+and `aiGeneratedResponse`. Response codes/descriptions go in metadata; absent partial results
+are omitted. Even errors without a decoded request have response metadata.
+
+## Logging and delivery limitations
+
+Use `workflow.logger` inside workflows, `activity.logger` inside activities, and the application
+Logging utility elsewhere. These are worker logs; no custom portal logging or activity heartbeat
+implementation exists. Workflow history records activity outcomes. OpenAI INFO logging includes
+timing and available token usage. DEBUG logging currently includes prompts, AI responses, and
+MQ settings containing credentials; this remains an unresolved logging issue.
+
+MQGET removes requests without a transaction before validation and Temporal acceptance. Callback
+failures can lose requests; ambiguous result puts can cause duplicates. There is no SQL persistence,
+backout handling, durable application backlog, or application-level deduplication. The single
+submission executor has an unbounded backlog. The shared MQ publisher has no concurrency guard.
+
+## Development and current validation
 
 ```powershell
 uv run ruff check .
@@ -157,55 +185,26 @@ uv run mypy src tests
 uv run pytest -q
 ```
 
+Validation on 2026-09-11 after removing the legacy orchestrator and migrating its tests:
+118 tests passed with 87% branch-inclusive coverage. Ruff lint, formatting, and strict mypy checks
+pass. Tests cover the active parser, workflow sequencing and retry budgets, product-informed
+generation, submission policies, and error publication. No live integration services were used.
+
+On this Windows environment, sandboxed pytest runs encounter temporary-directory access errors;
+the passing suite ran outside the sandbox with a fresh explicit `--basetemp` directory.
+See [AGENTS.MD](AGENTS.MD) for architecture, remaining gaps, and development instructions.
+
 ## Project structure
 
 ```text
-src/application/     Enquiry orchestration and request schema
+src/application/     Temporal client, worker, workflow, activities, request schema
 src/config/          Environment configuration
 src/infrastructure/  IBM MQ adapter
-src/utilities/       Logging, prompt, and OpenAI helpers
-prompts/             Markdown prompt templates
-tests/               Unit and integration tests
+src/utilities/       Logging, prompt, OpenAI, and response helpers
+prompts/             Templates and product JSON catalogue
+tests/               Unit tests; integration package currently empty
 ```
-
-## Contributing
-
-Open an issue before proposing a substantial change. Keep pull requests focused, add tests for
-behavior changes, and ensure the development checks pass.
 
 ## License
 
 Licensed under the [Apache License 2.0](LICENSE).
-## Temporal response publishing
-
-The Temporal workflow parses the enquiry, classifies it, generates the AI response, and invokes
-`PUSHResponseMessage.push_response_message(message, errorCode, errorMessage)`. The message
-contains `parsed_message`, `_classification`, and `_ai_response_message`; unfinished results
-are `None`. Success uses code `0000` and description `Success`.
-
-After an activity exhausts its retries, times out, or fails without retry, the workflow publishes
-one error response with the original decoded enquiry and available partial results:
-
-| Stage | Code | Description |
-| --- | --- | --- |
-| Parsing/validation | `8100` | Request validation failed |
-| Classification | `8200` | Message classification failed |
-| Response generation | `8300` | Response generation failed |
-| Exception inside workflow processing | `9999` | Unable to process the enquiry |
-
-Invalid requests raise non-retryable activity errors. Schema file access failures remain retryable.
-If no request object can be decoded, the error envelope still contains response metadata. Invalid
-request metadata is preserved in `orignalMessage` rather than copied into response metadata.
-After error publication, the workflow raises a non-retryable `ApplicationError`, retaining the
-processing failure as its cause. Cancellation propagates without publishing a business error.
-
-Publishing uses a separate policy of at most five attempts and a three-minute total deadline.
-If publishing fails, the workflow fails without recursively attempting another error publication.
-An ambiguous MQ failure can still cause duplicate publication; delivery is not exactly once.
-The client allows 25 minutes for the workflow: two minutes for parsing, nine for each AI stage,
-three for publishing, and two minutes of margin. Workflow termination or execution timeout cannot
-be handled by this error-publication path. Existing executions retain their original timeout.
-
-WORKER mode supplies the response utility with an IBM MQ result client and closes it when the
-worker stops. Worker startup requires valid IBM MQ settings. Before replacing workers serving
-existing executions, validate replay compatibility with their histories or drain those executions.

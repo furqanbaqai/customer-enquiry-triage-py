@@ -48,7 +48,7 @@ def isolate_configuration(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.fixture
 def connect(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
-    connection = AsyncMock(return_value=MagicMock(execute_workflow=AsyncMock()))
+    connection = AsyncMock(return_value=MagicMock(start_workflow=AsyncMock()))
     monkeypatch.setattr(client_module.Client, "connect", connection)
     return connection
 
@@ -63,16 +63,18 @@ def test_submits_validated_enquiry(
     CustomerEnquiryClient.sendToWorkflow(json.dumps(enquiry).encode())
 
     connect.assert_awaited_once_with(endpoint or "localhost:7233")
-    execute = connect.return_value.execute_workflow
+    execute = connect.return_value.start_workflow
     execute.assert_awaited_once()
     arguments = execute.await_args
     assert arguments.args[0] is CustomerEnquiryOrchaestrator.run
     assert json.loads(arguments.args[1]) == enquiry
-    assert arguments.kwargs["id"] == "customer-enquiry-REF-123"
+    assert arguments.kwargs["id"] == "CE-WEBSITE-REF-123"
     assert arguments.kwargs["task_queue"] == "CUSTOMER.ENQUIRY.REQUEST"
-    assert arguments.kwargs["id_reuse_policy"] == WorkflowIDReusePolicy.REJECT_DUPLICATE
+    assert arguments.kwargs["id_reuse_policy"] == WorkflowIDReusePolicy.ALLOW_DUPLICATE
     assert arguments.kwargs["execution_timeout"].total_seconds() == 1500
-    assert arguments.kwargs["rpc_timeout"].total_seconds() == 30
+    assert arguments.kwargs["rpc_timeout"].total_seconds() == 60
+    assert arguments.kwargs["task_timeout"].total_seconds() == 10
+    execute.return_value.result.assert_not_called()
 
 
 @pytest.mark.parametrize("payload", [b"\xff", b"{", b"{}", b"[]", b"null"])
@@ -105,7 +107,7 @@ def test_schema_load_failure(
     connect.assert_not_awaited()
 
 
-@pytest.mark.parametrize("stage", ["connect", "execute"])
+@pytest.mark.parametrize("stage", ["connect", "start"])
 @pytest.mark.parametrize("failure_type", [RuntimeError, TimeoutError])
 def test_temporal_failure_preserves_cause_without_logging_payload(
     enquiry: dict[str, object],
@@ -118,7 +120,7 @@ def test_temporal_failure_preserves_cause_without_logging_payload(
     if stage == "connect":
         connect.side_effect = failure
     else:
-        connect.return_value.execute_workflow.side_effect = failure
+        connect.return_value.start_workflow.side_effect = failure
     with pytest.raises(RuntimeError, match="Temporal enquiry execution failed") as error:
         CustomerEnquiryClient.sendToWorkflow(json.dumps(enquiry).encode())
     assert error.value.__cause__ is failure
@@ -146,5 +148,24 @@ def test_workflow_timeout_reserves_error_publication_budget(
     enquiry: dict[str, object], connect: AsyncMock
 ) -> None:
     CustomerEnquiryClient.sendToWorkflow(json.dumps(enquiry).encode())
-    timeout = connect.return_value.execute_workflow.call_args.kwargs["execution_timeout"]
+    timeout = connect.return_value.start_workflow.call_args.kwargs["execution_timeout"]
     assert timeout.total_seconds() == 25 * 60
+
+
+@pytest.mark.parametrize("policy", list(WorkflowIDReusePolicy))
+def test_configured_reuse_policy(
+    enquiry: dict[str, object], connect: AsyncMock, policy: WorkflowIDReusePolicy
+) -> None:
+    ConfigLoader.configurations["OFTL_AI_TEMPORALREUSE_POLICY"] = f" {policy.name.lower()} "
+    CustomerEnquiryClient.sendToWorkflow(json.dumps(enquiry).encode())
+    assert connect.return_value.start_workflow.call_args.kwargs["id_reuse_policy"] == policy
+
+
+@pytest.mark.parametrize("policy", ["", " ", "UNKNOWN"])
+def test_rejects_unknown_reuse_policy(
+    enquiry: dict[str, object], connect: AsyncMock, policy: str
+) -> None:
+    ConfigLoader.configurations["OFTL_AI_TEMPORALREUSE_POLICY"] = policy
+    with pytest.raises(ValueError, match="OFTL_AI_TEMPORALREUSE_POLICY"):
+        CustomerEnquiryClient.sendToWorkflow(json.dumps(enquiry).encode())
+    connect.assert_not_awaited()

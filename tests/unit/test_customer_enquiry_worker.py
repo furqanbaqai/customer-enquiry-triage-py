@@ -31,7 +31,7 @@ worker_module = importlib.import_module("src.application.CustomerEnquiryWorker")
 
 def test_workflow_returns_success_envelope(monkeypatch: pytest.MonkeyPatch) -> None:
     original = {"meta": {"refNumber": "ENQ-1"}, "message": "Help", "category": "Accounts"}
-    classification = {"emotionalType": "Calm"}
+    classification = {"emotionalType": "Calm", "product_code": "SIB-RET-001"}
     monkeypatch.setattr(workflow, "logger", MagicMock())
     monkeypatch.setattr(workflow, "execute_activity", AsyncMock(return_value=original))
     generated = {"response": "We can help"}
@@ -57,6 +57,7 @@ def test_workflow_returns_success_envelope(monkeypatch: pytest.MonkeyPatch) -> N
         "_classification": classification,
         "_ai_response_message": generated,
     }
+    assert classify.await_args_list[1].kwargs["args"] == ["Help", "SIB-RET-001", "Calm"]
     assert original["meta"] == {"refNumber": "ENQ-1"}
 
     async def round_trip() -> None:
@@ -173,6 +174,7 @@ def test_registers_workflow_and_bound_activities_and_shuts_down(
     assert isinstance(publisher.__self__, PUSHResponseMessage)
     assert publisher.__func__ is PUSHResponseMessage.push_response_message
     assert arguments.kwargs["graceful_shutdown_timeout"].total_seconds() == 600
+    assert arguments.kwargs["max_concurrent_activities"] == 2
     context.run.assert_awaited_once_with()
 
 
@@ -218,7 +220,7 @@ def test_push_response_activity(fails: bool) -> None:
     sender = MagicMock()
     publisher = PUSHResponseMessage(ResponseMessageUtility(sender))
     original = {"meta": {"refNumber": "ENQ-1"}, "message": "Help"}
-    classification = {"emotionalType": "Calm"}
+    classification = {"emotionalType": "Calm", "product_code": "SIB-RET-001"}
     generated = {"response": "We can help"}
     payload = {
         "parsed_message": original,

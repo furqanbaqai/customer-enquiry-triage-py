@@ -44,7 +44,7 @@ def test_terminal_activity_failure_publishes_partial_results(
     monkeypatch: pytest.MonkeyPatch, stage: str, code: str, state: RetryState
 ) -> None:
     original = {"meta": {"refNumber": "ENQ-1"}, "message": "Help"}
-    assessment = {"emotionalType": "Calm"}
+    assessment = {"emotionalType": "Calm", "product_code": "SIB-RET-001"}
     failure = activity_failure(state)
     parser = AsyncMock(return_value=original)
     results: list[object] = [failure, {}]
@@ -79,7 +79,9 @@ def test_terminal_activity_failure_publishes_partial_results(
 def test_workflow_validation_error_is_published(
     monkeypatch: pytest.MonkeyPatch, assessment: object
 ) -> None:
-    monkeypatch.setattr(workflow, "execute_activity", AsyncMock(return_value={"meta": {}}))
+    monkeypatch.setattr(
+        workflow, "execute_activity", AsyncMock(return_value={"meta": {}, "message": "Help"})
+    )
     activities = AsyncMock(side_effect=[assessment, {}])
     monkeypatch.setattr(workflow, "execute_activity_method", activities)
     with pytest.raises(ApplicationError) as error:
@@ -92,12 +94,18 @@ def test_workflow_validation_error_is_published(
 def test_publication_failure_does_not_publish_again(
     monkeypatch: pytest.MonkeyPatch, processing_fails: bool
 ) -> None:
-    monkeypatch.setattr(workflow, "execute_activity", AsyncMock(return_value={"meta": {}}))
+    monkeypatch.setattr(
+        workflow, "execute_activity", AsyncMock(return_value={"meta": {}, "message": "Help"})
+    )
     failure = activity_failure(RetryState.MAXIMUM_ATTEMPTS_REACHED)
     results: list[object] = (
         [ValueError("private failure"), failure]
         if processing_fails
-        else [{"emotionalType": "Calm"}, {"response": "Help"}, failure]
+        else [
+            {"emotionalType": "Calm", "product_code": "SIB-RET-001"},
+            {"response": "Help"},
+            failure,
+        ]
     )
     activities = AsyncMock(side_effect=results)
     monkeypatch.setattr(workflow, "execute_activity_method", activities)

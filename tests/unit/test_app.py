@@ -1,4 +1,5 @@
 import logging
+import signal
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
@@ -6,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from src import app
+from src.application.CustomerEnquiryClient import CustomerEnquiryClient
 from src.application.CustomerEnquiryWorker import CustomerEnquiryWorker
 from src.config import ConfigLoader
 from src.infrastructure import IBMMQSettings
@@ -21,13 +23,18 @@ def test_display_project_information(tmp_path: Path, capsys: pytest.CaptureFixtu
 
     app.display_project_information(project_file)
 
-    assert capsys.readouterr().out == "Version: 1.2.3\nDescription: Example service\n"
+    assert (
+        capsys.readouterr().out == "Version: 1.2.3\nDescription: Example service\nStartup Mode: \n"
+    )
 
 
 def test_main_starts_consumer(
     caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     caplog.set_level(logging.INFO, logger="OFTL")
+    submit = MagicMock()
+    monkeypatch.setattr(CustomerEnquiryClient, "sendToWorkflow", submit)
+    monkeypatch.setattr(signal, "signal", MagicMock())
     client = MagicMock()
     executor = MagicMock()
     wait_event = MagicMock()
@@ -45,8 +52,12 @@ def test_main_starts_consumer(
     executor.submit.assert_called_once()
     submitted = executor.submit.call_args
     submitted.args[0](*submitted.args[1:], **submitted.kwargs)
-    assert "[CEP] Customer enquiry triage service is consuming IBM MQ requests." in caplog.messages
+    assert (
+        "[CEP] Customer enquiry triage client service is consuming IBM MQ requests."
+        in caplog.messages
+    )
     assert "Received IBM MQ request message (8 bytes)." in caplog.messages
+    submit.assert_called_once_with(b"customer")
     client.close.assert_called_once_with()
     executor.shutdown.assert_called_once_with(wait=True)
 
@@ -94,8 +105,9 @@ def test_worker_mode_composes_and_closes_result_client(
 
 
 def test_cli_client_mode(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(ConfigLoader, "load_configurations", MagicMock())
     run_client = MagicMock()
-    monkeypatch.setattr(app, "_run_client", run_client)
+    monkeypatch.setattr(app, "_run_mq_client", run_client)
     monkeypatch.setattr(sys, "argv", ["customer-enquiry-triage", "CLIENT"])
 
     app.main()
