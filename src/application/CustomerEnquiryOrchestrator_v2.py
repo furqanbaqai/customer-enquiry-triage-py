@@ -88,7 +88,7 @@ class CustomerEnquiryOrchaestrator:
             stage = "generation"
             _ai_response_message = await workflow.execute_activity_method(
                 MessageGenerator.generate_response_message,
-                args=[parsed_message, emotion_type],
+                args=[parsed_message["message"], _classification["product_code"], emotion_type],
                 start_to_close_timeout=timedelta(minutes=5),
                 schedule_to_close_timeout=timedelta(minutes=9),
                 retry_policy=AI_RETRY_POLICY,
