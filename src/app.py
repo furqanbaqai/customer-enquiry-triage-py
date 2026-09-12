@@ -9,7 +9,6 @@ Reference: https://github.com/furqanbaqai/customer-enquiry-triage-py/blob/main/s
 
 # ruff: noqa: E501, UP009 -- The banner is intentionally wide; the header requires UTF-8.
 
-import argparse
 import asyncio
 import os
 import signal
@@ -74,19 +73,17 @@ class _CallbackContext:
         self.DataLength = data_length
 
 
-def main(mode: str | None = None) -> None:
-    """Run the requested mode, reading command-line arguments when mode is omitted."""
-    parser = argparse.ArgumentParser(description="Customer enquiry triage service")
-    parser.add_argument("mode", choices=("CLIENT", "WORKER"), help="Service execution mode")
-    arguments = parser.parse_args(None if mode is None else [mode])
+def main(attMode: str = "") -> None:
+    """Run the mode configured by the ``OFTL_RUN_MODE`` environment variable."""
 
     ConfigLoader.load_configurations()
+    mode = attMode if attMode != "" else (ConfigLoader.get("OFTL_RUN_MODE") | "CLIENT")
     display_banner()
-    display_project_information(startupMode=arguments.mode)
+    display_project_information(startupMode=mode)
 
-    if arguments.mode == "CLIENT":
+    if mode == "CLIENT":
         _run_mq_client()
-    elif arguments.mode == "WORKER":
+    elif mode == "WORKER":
         result_client = IBMMQClient(IBMMQSettings.from_config())
         try:
             asyncio.run(CustomerEnquiryWorker.start(ResponseMessageUtility(result_client)))
@@ -95,18 +92,18 @@ def main(mode: str | None = None) -> None:
         finally:
             result_client.close()
     else:
-        Logging.error("Unknown mode: %s", arguments.mode)
+        Logging.error("Unknown startup mode: %s", mode)
         return
 
 
 def main_client() -> None:
     """Run the IBM MQ client mode."""
-    main(mode="CLIENT")
+    main(attMode="CLIENT")
 
 
 def main_worker() -> None:
     """Run the IBM MQ client mode."""
-    main(mode="WORKER")
+    main(attMode="WORKER")
 
 
 def _run_mq_client() -> None:

@@ -1,0 +1,16 @@
+# Allow only application inputs into the Docker build context.
+**
+!Dockerfile
+!.dockerignore
+!pyproject.toml
+!uv.lock
+!.python-version
+!README.md
+!src/
+!src/**
+!prompts/
+!prompts/**
+**/__pycache__/
+**/*.pyc
+**/.env
+**/.env.*

@@ -96,10 +96,12 @@ class CustomerEnquiryClient:
             raise ValueError("A validated enquiry with meta.channle is required.")
         workflow_id = f"CE-{channel.upper()}-{reference}"
 
+        stage = "connect"
         try:
             async with asyncio.timeout(30):
                 client = await Client.connect(endpoint.strip())
 
+            stage = "start"
             result = await client.start_workflow(
                 CustomerEnquiryOrchaestrator.run,
                 json.dumps(payload, ensure_ascii=False),
@@ -113,5 +115,15 @@ class CustomerEnquiryClient:
             Logging.info("Temporal message publish for workflow with workflow ID %s", workflow_id)
             Logging.debug("Temporal workflow result: %s", result)
         except Exception as exception:
-            Logging.error("Temporal enquiry execution failed (%s).", type(exception).__name__)
+            Logging.error(
+                "Temporal enquiry execution failed: stage=%s, workflow_id=%s, "
+                "task_queue=CUSTOMER.ENQUIRY.REQUEST, reuse_policy=%s, exception_type=%s, "
+                "error=%s",
+                stage,
+                workflow_id,
+                reuse_policy.name,
+                type(exception).__name__,
+                exception,
+                exc_info=True,
+            )
             raise RuntimeError("Temporal enquiry execution failed.") from exception

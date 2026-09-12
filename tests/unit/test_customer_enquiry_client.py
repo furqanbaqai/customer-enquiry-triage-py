@@ -108,7 +108,7 @@ def test_schema_load_failure(
 
 
 @pytest.mark.parametrize("stage", ["connect", "start"])
-@pytest.mark.parametrize("failure_type", [RuntimeError, TimeoutError])
+@pytest.mark.parametrize("failure_type", [RuntimeError, TimeoutError, ValueError])
 def test_temporal_failure_preserves_cause_without_logging_payload(
     enquiry: dict[str, object],
     connect: AsyncMock,
@@ -116,7 +116,7 @@ def test_temporal_failure_preserves_cause_without_logging_payload(
     stage: str,
     failure_type: type[Exception],
 ) -> None:
-    failure = failure_type("private customer data")
+    failure = failure_type("Temporal diagnostic detail")
     if stage == "connect":
         connect.side_effect = failure
     else:
@@ -124,7 +124,15 @@ def test_temporal_failure_preserves_cause_without_logging_payload(
     with pytest.raises(RuntimeError, match="Temporal enquiry execution failed") as error:
         CustomerEnquiryClient.sendToWorkflow(json.dumps(enquiry).encode())
     assert error.value.__cause__ is failure
-    assert "private customer data" not in caplog.text
+    assert "Temporal diagnostic detail" in caplog.text
+    assert f"stage={stage}" in caplog.text
+    assert "workflow_id=CE-WEBSITE-REF-123" in caplog.text
+    assert f"exception_type={failure_type.__name__}" in caplog.text
+    assert "reuse_policy=ALLOW_DUPLICATE" in caplog.text
+    assert "Traceback (most recent call last)" in caplog.text
+    record = next(r for r in caplog.records if "Temporal enquiry execution failed:" in r.message)
+    assert record.exc_info is not None
+    assert record.exc_info[1] is failure
     assert str(enquiry["message"]) not in caplog.text
 
 

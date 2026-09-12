@@ -89,6 +89,82 @@ Installed commands are `customer-enquiry-triage CLIENT`, `customer-enquiry-triag
 `customer-enquiry-triage-client`, and `customer-enquiry-triage-worker` (run through `uv run`).
 Python callers can use `main("CLIENT")` or `main("WORKER")`.
 
+## Docker build
+
+Start Docker Desktop with the Linux container engine running. The build requires access to
+`dhi.io` for the base images and to the configured Python package index for dependencies.
+
+1. Keep the IBM MQ redistributable archive at:
+   `C:\Users\baqai\source\sib\poc-slm-py\binaries\10.0.0.5-IBM-MQC-Redist-LinuxX64.tar.gz`.
+2. Open PowerShell in the application directory containing [Dockerfile](Dockerfile).
+3. Build the image with the required `mq-binaries` named context:
+
+```powershell
+Set-Location 'C:\Users\baqai\source\sib\poc-slm-py\customer-enquiry-triage-py'
+docker build --build-context "mq-binaries=C:\Users\baqai\source\sib\poc-slm-py\binaries" --file Dockerfile --tag customer-enquiry-triage:0.1.0 .
+```
+
+When the application and `binaries` directories are siblings, this relative-path command is
+equivalent when run from the application directory:
+
+```powershell
+docker build --build-context mq-binaries=../binaries --file Dockerfile --tag customer-enquiry-triage:0.1.0 .
+```
+
+The named context must point to the **directory containing the archive**, not the archive itself.
+The Dockerfile reads the archive using `COPY --from=mq-binaries`, extracts it in the builder,
+and copies the MQ client into the runtime image. `--file` selects the Dockerfile, `--tag` names
+the image, and the final `.` supplies the application directory as the main build context.
+
+### Troubleshooting build contexts
+
+- **`pull access denied` for `docker.io/library/mq-binaries:latest`:** the command omitted
+  `--build-context mq-binaries=...`. Docker interprets the unresolved name as a container image.
+  Run either complete command above; a Docker Hub login does not fix the missing context.
+- **MQ archive not found:** confirm the named context directory contains the exact archive name
+  shown above. `ADD ../binaries/...` cannot read outside the main build context.
+- **Cannot resolve or download from `dhi.io`:** check Docker Desktop's network/VPN connectivity
+  and registry access. If a proxy is required, configure Docker Desktop's proxy settings.
+
+References: [Docker build command](https://docs.docker.com/reference/cli/docker/buildx/build/)
+and [Docker build contexts](https://docs.docker.com/build/concepts/context/).
+
+### Current build status
+
+The Dockerfile defaults to `dhi.io/python:3.13-debian13-dev` for the builder and
+`dhi.io/python:3.13-debian13` for the runtime. Their names can be changed using the
+`DOCKER_PYTHON_BUILDER_IMAGE` and `DOCKER_PYTHON_RUNTIME_IMAGE` build arguments.
+It uses BuildKit's bundled frontend, avoiding a separate Docker Hub frontend download.
+The `.dockerignore` allowlist excludes `.env`, `.venv`, `.git`, and local artifacts from
+the application context.
+
+The Dockerfile uses matching Python 3.13 Debian 13 stages, disables uv Python downloads,
+and installs locked runtime dependencies with the image's `/usr/bin/python3`. The virtual
+environment, MQ libraries, source, metadata, and prompts are copied into the runtime with
+read/traverse permissions for user 65532. No uv synchronization or package downloads occur
+at startup. Keep both base-image overrides on matching Python versions and distributions.
+
+The rebuild attempted on 2026-09-12 was blocked while downloading base-image metadata because
+Docker Desktop could not resolve `production.cloudfront.docker.com`. No replacement image was
+produced; full build and runtime verification remain pending network recovery.
+
+### Select the container mode
+
+Set `OFTL_RUN_MODE` when starting the container. It accepts `WORKER` or `CLIENT` and defaults
+to `WORKER`. Rebuild the image after changing the Dockerfile, then run the modes as separate
+containers:
+
+```powershell
+docker run --rm --name enquiry-worker --env-file .env -e OFTL_RUN_MODE=WORKER customer-enquiry-triage:0.1.0
+docker run --rm --name enquiry-client --env-file .env -e OFTL_RUN_MODE=CLIENT customer-enquiry-triage:0.1.0
+```
+
+Run these commands in separate terminals. The Docker CMD reads the environment variable and
+passes it explicitly to `src.app.main(mode)`; an empty or unsupported value fails launcher
+validation. Native Python commands continue to use an explicit `CLIENT` or `WORKER` argument.
+Configure MQ, Temporal, and AI addresses in `.env` to be reachable from the containers;
+`localhost` inside a container refers to that container. The application runs in the container's Python process without an intermediate shell or uv process.
+
 ## Configuration
 
 Process environment overrides `.env`. AI endpoint and prompt settings are required for active
@@ -208,3 +284,11 @@ tests/               Unit tests; integration package currently empty
 ## License
 
 Licensed under the [Apache License 2.0](LICENSE).
+
+### Temporal submission diagnostics
+
+Failed Temporal submissions log the stage (`connect` or `start`), workflow ID, task queue,
+reuse policy, exception type/message, and full traceback with chained causes. The wrapper
+RuntimeError retains the original cause. The request payload is not explicitly logged;
+exception text can contain details supplied by the SDK/server. Use the stage and traceback
+to distinguish connection configuration failures from workflow-start rejection.

@@ -130,6 +130,17 @@ requires original metadata to be a mapping. Missing partial results are omitted 
   This is an environment limitation; no tests were skipped or weakened to bypass it.
 - No live MQ, Temporal, AI, database, replay, or concurrency integration was exercised.
 
+## Container startup
+
+The Dockerfile uses Python 3.13 Debian 13 dev/runtime stages and disables uv Python downloads.
+The builder runs uv sync --frozen --no-dev --python /usr/bin/python3. Runtime copies the venv,
+MQ client, source, pyproject.toml, and prompts, then runs as UID/GID 65532 with readable assets.
+CMD invokes src.app.main with explicit OFTL_RUN_MODE (default WORKER), validating CLIENT/WORKER.
+It does not invoke uv at startup. Passing an explicit mode also avoids the current app.py
+fallback expression using bitwise `|`; that separate native-startup bug remains unchanged.
+The build attempt on 2026-09-12 was blocked by Docker Desktop DNS resolution for
+production.cloudfront.docker.com before compilation. Full image validation remains pending.
+
 ## Environment and commands
 
 The project requires Python 3.12 or newer, while `.python-version` currently selects Python 3.13. Use `uv` and keep `uv.lock` committed.
