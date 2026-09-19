@@ -1,0 +1,226 @@
+services:
+
+  # ==========================================
+  # 1. PostgreSQL
+  # ==========================================
+
+  postgresql:
+    image: docker.io/library/postgres:${POSTGRESQL_VERSION}
+    container_name: temporal-postgresql
+
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:5432:5432"
+
+    environment:
+      POSTGRES_PASSWORD: temporal
+      POSTGRES_USER: temporal
+
+    networks:
+      - temporal-network
+
+    volumes:
+      - temporal-postgres-data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 30s
+
+
+  # ==========================================
+  # 2. Elasticsearch
+  # ==========================================
+
+  elasticsearch:
+    image: docker.io/library/elasticsearch:${ELASTICSEARCH_VERSION}
+    container_name: temporal-elasticsearch
+
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:9200:9200"
+
+    environment:
+      - cluster.routing.allocation.disk.threshold_enabled=true
+      - cluster.routing.allocation.disk.watermark.low=512mb
+      - cluster.routing.allocation.disk.watermark.high=256mb
+      - cluster.routing.allocation.disk.watermark.flood_stage=128mb
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms256m -Xmx256m
+      - xpack.security.enabled=false
+
+    networks:
+      - temporal-network
+
+    volumes:
+      - temporal-es-data:/usr/share/elasticsearch/data
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "curl -f 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=1s' || exit 1"
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 30s
+
+
+  # ==========================================
+  # 3. Temporal Database Initialization
+  # ==========================================
+
+  temporal-admin-tools:
+    image: docker.io/temporalio/admin-tools:${TEMPORAL_ADMINTOOLS_VERSION}
+    container_name: temporal-admin-tools
+
+    restart: on-failure:6
+
+    depends_on:
+      postgresql:
+        condition: service_healthy
+
+      elasticsearch:
+        condition: service_healthy
+
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=postgresql
+      - SQL_PASSWORD=temporal
+      - ES_HOST=elasticsearch
+      - ES_PORT=9200
+      - ES_SCHEME=http
+      - ES_VERSION=v7
+      - ES_VISIBILITY_INDEX=temporal_visibility_v1_dev
+
+    networks:
+      - temporal-network
+
+    volumes:
+      - ./scripts:/scripts:z,ro
+
+    entrypoint: ["/bin/sh"]
+
+    command: /scripts/setup-postgres-es.sh
+
+
+  # ==========================================
+  # 4. Temporal Server
+  # ==========================================
+
+  temporal:
+    image: docker.io/temporalio/server:${TEMPORAL_VERSION}
+    container_name: temporal
+
+    restart: unless-stopped
+
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=postgresql
+      - ENABLE_ES=true
+      - ES_SEEDS=elasticsearch
+      - ES_VERSION=v7
+      - BIND_ON_IP=0.0.0.0
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+
+    networks:
+      - temporal-network
+
+    ports:
+      - "7233:7233"
+
+    volumes:
+      - ./dynamicconfig:/etc/temporal/config/dynamicconfig:Z,ro
+
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "7233"]
+      interval: 5s
+      timeout: 3s
+      start_period: 30s
+      retries: 60
+
+
+  # ==========================================
+  # 5. Temporal Namespace Initialization
+  # ==========================================
+
+  temporal-create-namespace:
+    image: docker.io/temporalio/admin-tools:${TEMPORAL_ADMINTOOLS_VERSION}
+    container_name: temporal-create-namespace
+
+    restart: on-failure:5
+
+    depends_on:
+      - temporal
+
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - DEFAULT_NAMESPACE=default
+
+    networks:
+      - temporal-network
+
+    volumes:
+      - ./scripts:/scripts:Z,ro
+
+    entrypoint: ["/bin/sh"]
+
+    command: /scripts/create-namespace.sh
+
+
+  # ==========================================
+  # 6. Temporal Web UI
+  # ==========================================
+
+  temporal-ui:
+    image: docker.io/temporalio/ui:${TEMPORAL_UI_VERSION}
+    container_name: temporal-ui
+
+    restart: unless-stopped
+
+    depends_on:
+      - temporal
+
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+
+    networks:
+      - temporal-network
+
+    ports:
+      - "8080:8080"
+
+
+# ==========================================
+# Networks
+# ==========================================
+
+networks:
+  temporal-network:
+    driver: bridge
+    name: temporal-network
+
+
+# ==========================================
+# Persistent Volumes
+# ==========================================
+
+volumes:
+  temporal-postgres-data:
+  temporal-es-data:

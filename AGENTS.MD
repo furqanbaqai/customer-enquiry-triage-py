@@ -95,9 +95,10 @@ requires original metadata to be a mapping. Missing partial results are omitted 
   default 300-second HTTP timeout. callJson checks only that decoded JSON is an object.
 - Classification template variables: MESSAGE and CATEGORY. Generation variables: INPUT_MESSAGE,
   INPUT_EMOTION, PRODUCT_INFORMATION. Templates are cached by resolved path per loader.
-- `.env.example` selects the unversioned classification template, which requires REFERENCE_NUMBER,
-  CHANNEL, FIRST_NAME, and LAST_NAME that the active classifier does not supply. That example
-  configuration fails prompt rendering. Private `.env` contents were not inspected.
+- `.env.example` selects classification v04 with the supported MESSAGE/CATEGORY placeholders.
+  Both configured templates were verified to render. The unversioned classification template
+  remains incompatible with the active caller. All 23 application OFTL_* variables are documented
+  in README and the example, whose service addresses target Docker Desktop host connectivity.
 - Product codes from the model are not validated against a catalogue allowlist or checked for
   path containment before file access. Unknown products fail generation; response schemas are
   not comprehensively enforced. Classification v05 also has inconsistent emotion examples.

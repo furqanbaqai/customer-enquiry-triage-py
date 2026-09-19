@@ -36,7 +36,7 @@ Prepare the following before running CLIENT and WORKER:
 | IBM MQ service | Provide a reachable queue manager, listener, channel, credentials, and request/result queues. CLIENT needs permission to read requests; WORKER needs permission to publish results. Configure the `OFTL_IMQ_*` settings. |
 | Temporal service | Provide a running Temporal server reachable by both processes through `OFTL_AI_TEMPORALURL` (default `localhost:7233`). Installing `temporalio` installs the Python SDK; the Temporal server must run separately. The current connection code uses the default namespace and does not configure TLS or API-key authentication. |
 | AI endpoint | Provide a reachable OpenAI-compatible Chat Completions endpoint and token through `OFTL_OPENAI_URL` and `OFTL_OPENAI_APITOKEN`. The application sends model name `default`. |
-| Prompt and product files | Supply compatible templates through `OFTL_AI_PROMPT_1` and `OFTL_AI_PROMPT_2`, and retain the `prompts/product_json/` catalogue. See the prompt compatibility note below before using `.env.example`. |
+| Prompt and product files | Supply compatible templates through `OFTL_AI_PROMPT_1` and `OFTL_AI_PROMPT_2`, and retain the `prompts/product_json/` catalogue. See the prompt configuration details below. |
 | Application configuration | Create `.env` from `.env.example` and replace example values. Run both CLIENT and WORKER for end-to-end processing. |
 
 The runtime Python dependencies declared in [pyproject.toml](pyproject.toml) are:
@@ -80,13 +80,13 @@ Complete the prerequisites above, then install dependencies and configure the ap
 uv sync --dev
 Copy-Item .env.example .env
 # Configure MQ, Temporal, AI, and prompt settings before starting.
-uv run python -m src CLIENT
+uv run customer-enquiry-triage-client
 # In a second terminal:
-uv run python -m src WORKER
+uv run customer-enquiry-triage-worker
 ```
 
-Installed commands are `customer-enquiry-triage CLIENT`, `customer-enquiry-triage WORKER`,
-`customer-enquiry-triage-client`, and `customer-enquiry-triage-worker` (run through `uv run`).
+Use the installed `customer-enquiry-triage-client` and `customer-enquiry-triage-worker` commands
+through `uv run`. The generic command currently does not parse positional mode arguments.
 Python callers can use `main("CLIENT")` or `main("WORKER")`.
 
 ## Docker build
@@ -167,37 +167,90 @@ Configure MQ, Temporal, and AI addresses in `.env` to be reachable from the cont
 
 ## Configuration
 
-Process environment overrides `.env`. AI endpoint and prompt settings are required for active
-worker processing. MQ settings are required in both modes. Configuration is not comprehensively
-validated at startup; AI and prompt validation occurs when used.
+[.env.example](.env.example) lists every application `OFTL_*` setting. Copy it to `.env` and
+replace the placeholders. Its service addresses target Docker Desktop containers connecting
+to services on the Windows host (`host.docker.internal`). For native execution use `localhost`;
+for remote services use their actual hostname. The examples are not production credentials.
 
-| Variable | Required | Default or example |
+ConfigLoader reads the project-root `.env` and overlays process environment values. Docker
+`--env-file .env` supplies process variables; explicit `-e OFTL_RUN_MODE=CLIENT` overrides that
+file's mode. Keep values on separate `KEY=value` lines without inline comments or shell expansion.
+Defaults below apply when a key is absent; a blank value does not automatically select a default.
+
+### Startup and Temporal
+
+| Variable | Used by | Default | Accepted value / purpose |
+| --- | --- | --- | --- |
+| `OFTL_RUN_MODE` | Docker launcher; application startup | `WORKER` in Docker | Exact `CLIENT` or `WORKER`; Docker rejects empty/other values. |
+| `OFTL_AI_TEMPORALURL` | Both modes | `localhost:7233` | Non-empty Temporal host:port; example `host.docker.internal:7233`. |
+| `OFTL_AI_TEMPORALREUSE_POLICY` | CLIENT | `ALLOW_DUPLICATE` | `ALLOW_DUPLICATE`, `ALLOW_DUPLICATE_FAILED_ONLY`, `REJECT_DUPLICATE`, or `TERMINATE_IF_RUNNING`; whitespace trimmed, case-insensitive. |
+
+The current application has a separate native-startup issue: `main()` uses bitwise `|` in its
+mode fallback expression. Docker bypasses that expression by passing the mode explicitly.
+For native execution, use the installed `customer-enquiry-triage-client` or
+`customer-enquiry-triage-worker` commands, which also pass an explicit mode. Setting the
+variable alone does not fix native `main()` until that expression is corrected.
+
+Temporal namespace, TLS, API key, task queue, and workflow/activity timeouts are not exposed as
+application environment settings. The current connection uses the default namespace, and the
+task queue is `CUSTOMER.ENQUIRY.REQUEST`. Do not add speculative keys to `.env` expecting them
+to change these settings.
+
+### IBM MQ
+
+All six connection fields are required at startup in both modes, even when a mode uses only
+one queue. The example values below are placeholders, not code defaults.
+
+| Variable | Required / default | Meaning |
 | --- | --- | --- |
-| `OFTL_AI_TEMPORALURL` | No | `localhost:7233` |
-| `OFTL_AI_TEMPORALREUSE_POLICY` | No | `ALLOW_DUPLICATE` |
-| `OFTL_OPENAI_URL` | Yes | OpenAI-compatible base or `/chat/completions` URL |
-| `OFTL_OPENAI_APITOKEN` | Yes | No default |
-| `OFTL_OPENAI_TEMPERATURE` | No | `0.1` |
-| `OFTL_OPENAI_TOP_P` | No | `0.9` |
-| `OFTL_OPENAI_MAX_TOKENS` | No | `200` |
-| `OFTL_OPENAI_TIMEOUT` | No | `300` seconds |
-| `OFTL_OPENAI_STREAM` | No | `False` |
-| `OFTL_AI_PROMPT_1` | Yes | `prompts/customer_enquiry_triage.md` |
-| `OFTL_AI_PROMPT_2` | Yes | `prompts/message-generation/enquiry-message-generator-v1.0.md` |
-| `OFTL_IMQ_QMGR` | Yes | No default |
-| `OFTL_IMQ_CHANNEL` | Yes | No default |
-| `OFTL_IMQ_LISTENER` | Yes | `1414` in `.env.example` |
-| `OFTL_IMQ_USERNAME` | Yes | No default |
-| `OFTL_IMQ_PASS` | Yes | No default |
-| `OFTL_IMQ_HOST` | Yes | No default |
-| `OFTL_IMQ_REQUEST_QUEUE` | No | `AI.CUST.ENQ.TRIAGE.REQUEST.Q` |
-| `OFTL_IMQ_RESULT_QUEUE` | No | `AI.CUST.ENQ.TRIAGE.RESULT.Q` |
-| `OFTL_IMQ_BACKOUT_QUEUE` | No | `AI.CUST.ENQ.TRIAGE.BACKOUT.Q` (reserved; unused) |
-| `OFTL_LOG_LEVEL` | No | `INFO` |
-| `OFTL_LOG_FORMAT` | No | See `.env.example` |
+| `OFTL_IMQ_QMGR` | Required; example `QM1` | Queue manager name. |
+| `OFTL_IMQ_CHANNEL` | Required; example `DEV.APP.SVRCONN` | Client connection channel. |
+| `OFTL_IMQ_LISTENER` | Required; example `1414` | Integer port, 1–65535; no code default. |
+| `OFTL_IMQ_USERNAME` | Required; example `app` | MQ username. |
+| `OFTL_IMQ_PASS` | Required; `replace-me` | MQ password; replace with the actual credential. |
+| `OFTL_IMQ_HOST` | Required; example `host.docker.internal` | Hostname or IP without a scheme or port. |
+| `OFTL_IMQ_REQUEST_QUEUE` | `AI.CUST.ENQ.TRIAGE.REQUEST.Q` | CLIENT input queue. |
+| `OFTL_IMQ_RESULT_QUEUE` | `AI.CUST.ENQ.TRIAGE.RESULT.Q` | WORKER output queue. |
+| `OFTL_IMQ_BACKOUT_QUEUE` | `AI.CUST.ENQ.TRIAGE.BACKOUT.Q` | Reserved; no backout publication is implemented. |
 
-See [`.env.example`](.env.example) for the complete configuration. Never commit `.env` or real
-credentials.
+### AI processing and prompts
+
+These settings apply to WORKER processing, and are validated when used rather than fully at
+startup. CLIENT does not call the AI endpoint.
+
+| Variable | Required / default | Accepted value / purpose |
+| --- | --- | --- |
+| `OFTL_OPENAI_URL` | Required | OpenAI-compatible base URL or full `/chat/completions` URL. |
+| `OFTL_OPENAI_APITOKEN` | Required | Non-empty API token. |
+| `OFTL_OPENAI_TEMPERATURE` | `0.1` | Number from 0 to 2. |
+| `OFTL_OPENAI_TOP_P` | `0.9` | Number from 0 to 1. |
+| `OFTL_OPENAI_MAX_TOKENS` | `200` | Integer >= 1. |
+| `OFTL_OPENAI_TIMEOUT` | `300` | Integer >= 1; HTTP timeout in seconds. |
+| `OFTL_OPENAI_STREAM` | `False` | `true` or `false`, case-insensitive; no numeric/yes/no aliases. |
+| `OFTL_AI_PROMPT_1` | Required; example `prompts/customer_enquiry_triage_v04.md` | Classification template; no code default path. |
+| `OFTL_AI_PROMPT_2` | Required; example `prompts/message-generation/enquiry-message-generator-v1.0.md` | Response-generation template; no code default path. |
+
+The model name is fixed as `default`; no model environment variable is implemented. Product
+JSON comes from `prompts/product_json/`, also not an environment-configurable path.
+
+### Logging
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `OFTL_LOG_LEVEL` | `INFO` | Standard logging level, case-insensitive; unknown names fall back to INFO. |
+| `OFTL_LOG_FORMAT` | See `.env.example` | Python logging format; the example exactly matches the code default. |
+
+Current DEBUG logs may contain MQ credentials, prompts, and AI responses. Temporal failure
+tracebacks include SDK/server exception details. Never commit real credentials or customer data.
+`ConfigLoader.decrypt` is a placeholder, including for variables ending in `_SECRET`.
+
+### Docker-managed settings
+
+The Dockerfile sets `APP_HOME`, `VIRTUAL_ENV`, `PATH`, `MQ_INSTALLATION_PATH`, `LD_LIBRARY_PATH`,
+`PYTHONDONTWRITEBYTECODE`, and `PYTHONUNBUFFERED`. Its builder also sets `UV_PYTHON_DOWNLOADS`,
+`UV_LINK_MODE`, and `PIP_NO_CACHE_DIR`. These image settings do not need entries in `.env.example`.
+`DOCKER_PYTHON_BUILDER_IMAGE` and `DOCKER_PYTHON_RUNTIME_IMAGE` are build arguments, supplied
+through `docker build --build-arg`, not runtime application settings.
 
 ## Prompts and product information
 
@@ -207,9 +260,8 @@ and `product_code`; the generator loads `prompts/product_json/{product_code}.jso
 its JSON content to the response template. The catalogue contains 99 files; no vector retrieval
 is implemented. Templates are cached by resolved path per loader.
 
-The unversioned classification template selected by `.env.example` expects additional placeholders
-that the active classifier does not supply. Select a compatible template before running; the
-example currently fails prompt rendering. Product codes and AI output shapes need stronger
+The example selects classification v04, whose placeholders match the active classifier.
+The unversioned template requires additional placeholders and is not compatible with that caller. Product codes and AI output shapes need stronger
 validation. OpenAIUtility currently validates only that the response is a JSON object.
 
 ## Outcomes and retries
