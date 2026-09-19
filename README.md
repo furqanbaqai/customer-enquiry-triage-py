@@ -87,7 +87,106 @@ uv run customer-enquiry-triage-worker
 
 Use the installed `customer-enquiry-triage-client` and `customer-enquiry-triage-worker` commands
 through `uv run`. The generic command currently does not parse positional mode arguments.
-Python callers can use `main("CLIENT")` or `main("WORKER")`.
+Python callers can use `main("CLIENT")` or `main("WORKER")`. Run from this project directory
+so relative prompt paths resolve correctly. `uv run python -m src CLIENT` and
+`uv run customer-enquiry-triage CLIENT` do not select CLIENT mode; see the native-startup
+limitation under configuration.
+
+## Local Temporal stack (Podman Compose)
+
+[deployment/podman-compose/podman-compose.yml](deployment/podman-compose/podman-compose.yml)
+provides PostgreSQL, Elasticsearch, Temporal Server, Temporal Web UI, and one-shot schema and
+namespace initialization services. It does not start IBM MQ, an AI endpoint, or the application
+CLIENT/WORKER. PostgreSQL stores Temporal state; application SQL persistence is still absent.
+
+Install Podman with a Compose provider and start its Linux machine where required. Before
+starting the stack, supply these Compose interpolation variables through the shell or a local
+`deployment/podman-compose/.env` file. No image-version defaults or deployment `.env.example`
+are bundled; the application-root `.env.example` does not define them.
+
+| Variable | Container image |
+| --- | --- |
+| `POSTGRESQL_VERSION` | `docker.io/library/postgres` |
+| `ELASTICSEARCH_VERSION` | `docker.io/library/elasticsearch` |
+| `TEMPORAL_VERSION` | `docker.io/temporalio/server` |
+| `TEMPORAL_ADMINTOOLS_VERSION` | `docker.io/temporalio/admin-tools` |
+| `TEMPORAL_UI_VERSION` | `docker.io/temporalio/ui` |
+
+Choose compatible image tags before running these commands. The checked-in configuration uses
+the `postgres12` plugin, PostgreSQL v12 schema paths, and Elasticsearch `v7` configuration;
+compatibility with arbitrary image versions has not been verified.
+
+```powershell
+Set-Location deployment/podman-compose
+# Define all five image-version variables above before continuing.
+podman compose -f podman-compose.yml config
+podman compose -f podman-compose.yml up -d postgresql elasticsearch
+podman compose -f podman-compose.yml run --rm temporal-admin-tools
+# Continue only after schema initialization succeeds.
+podman compose -f podman-compose.yml up -d temporal temporal-create-namespace temporal-ui
+podman compose -f podman-compose.yml logs temporal-create-namespace
+podman compose -f podman-compose.yml ps
+```
+
+The staged startup ensures schema initialization finishes before Temporal starts: the Compose
+file itself only makes Temporal depend on database health, not schema initialization completion.
+The setup script uses unconditional database creation; rerunning it against existing volumes
+can fail. Inspect its logs before retrying an existing deployment.
+
+| Service | Host endpoint |
+| --- | --- |
+| Temporal gRPC | `localhost:7233` |
+| Temporal Web UI | `http://localhost:8080` |
+| PostgreSQL | `127.0.0.1:5432` |
+| Elasticsearch | `http://127.0.0.1:9200` |
+
+The stack creates the `default` namespace and uses the `temporal-network` bridge plus named
+PostgreSQL/Elasticsearch volumes. It contains development credentials and disables Elasticsearch
+security. Temporal and UI ports bind on all host interfaces in the current Compose file.
+Stop the stack with `podman compose -f podman-compose.yml down`; named data volumes are retained.
+
+Set native application `OFTL_AI_TEMPORALURL=localhost:7233`. Applications attached to the same
+container network can use `temporal:7233`; otherwise configure a reachable host address.
+The UI's host port 8080 conflicts with an AI service using the example
+`OFTL_OPENAI_URL=http://host.docker.internal:8080/v1/chat/completions`. Change one service's
+host port and its corresponding URL before running both.
+
+Known deployment limitations: `scripts/create-namespace.sh` references the misspelled
+`MAX_ATTdMPTS` in its failed-create branch, which exits under `set -u` instead of retrying.
+Successful creation or an existing namespace bypasses that branch. The bundled
+`scripts/validate-temporal.sh` is not invoked by Compose; it creates and terminates a synthetic
+workflow to check submission, and does not exercise the enquiry worker or MQ/AI processing.
+This stack has not been validated against live containers in this documentation review.
+
+## Request contract
+
+The authoritative request contract is
+[src/application/schema/enquiry-request-v1.0.json](src/application/schema/enquiry-request-v1.0.json).
+Publish a UTF-8 JSON object to `OFTL_IMQ_REQUEST_QUEUE`, for example:
+
+```json
+{
+  "meta": {
+    "refNumber": "ENQ-2026-0001",
+    "channel": "WebSite",
+    "reqIssuedAt": "2026-09-19T08:00:00Z"
+  },
+  "mobileNumber": "+971501234567",
+  "firstName": "Example",
+  "lastName": "Customer",
+  "emailAddress": "customer@example.com",
+  "message": "What savings accounts are available?",
+  "category": "Accounts",
+  "receivedAt": "2026-09-19T08:00:00Z"
+}
+```
+
+All fields above are required. Optional `customerId` must contain exactly 12 alphanumeric
+characters. `message` must contain 1–512 characters, `meta.refNumber` 1–36 characters, and
+`meta.channel` must be one of `WebSite`, `Mobile App`, `Web App`, `ATM`, `MFK`, `IVR`, or `Other`.
+Unknown top-level or metadata properties are rejected. See the schema for all field limits.
+The files under `docs/samples/` are historical examples and are not all valid against this
+contract: for example, `enquiry-request-v1.0.json` omits `category` and has an invalid customer ID.
 
 ## Docker build
 
@@ -129,7 +228,7 @@ the image, and the final `.` supplies the application directory as the main buil
 References: [Docker build command](https://docs.docker.com/reference/cli/docker/buildx/build/)
 and [Docker build contexts](https://docs.docker.com/build/concepts/context/).
 
-### Current build status
+### Image configuration and last recorded build attempt
 
 The Dockerfile defaults to `dhi.io/python:3.13-debian13-dev` for the builder and
 `dhi.io/python:3.13-debian13` for the runtime. Their names can be changed using the
@@ -146,7 +245,8 @@ at startup. Keep both base-image overrides on matching Python versions and distr
 
 The rebuild attempted on 2026-09-12 was blocked while downloading base-image metadata because
 Docker Desktop could not resolve `production.cloudfront.docker.com`. No replacement image was
-produced; full build and runtime verification remain pending network recovery.
+produced in that attempt. The image build was not rerun during this documentation review;
+the historical failure does not establish the current network or image status.
 
 ### Select the container mode
 
@@ -189,7 +289,9 @@ The current application has a separate native-startup issue: `main()` uses bitwi
 mode fallback expression. Docker bypasses that expression by passing the mode explicitly.
 For native execution, use the installed `customer-enquiry-triage-client` or
 `customer-enquiry-triage-worker` commands, which also pass an explicit mode. Setting the
-variable alone does not fix native `main()` until that expression is corrected.
+variable alone does not fix native `main()` until that expression is corrected. The generic
+installed command also forwards `None` from `src.main()` to `src.app.main()`, which logs an
+unknown mode and returns without starting a service.
 
 Temporal namespace, TLS, API key, task queue, and workflow/activity timeouts are not exposed as
 application environment settings. The current connection uses the default namespace, and the
@@ -289,7 +391,9 @@ their original timeout; replay-check histories or drain executions before incomp
 
 Response wire keys retain their existing spellings: `meta`, `orignalMessage`, `aiAssesment`,
 and `aiGeneratedResponse`. Response codes/descriptions go in metadata; absent partial results
-are omitted. Even errors without a decoded request have response metadata.
+are omitted. Valid original metadata is merged into response `meta` and removed from
+`orignalMessage`; malformed metadata remains in the original error payload. Even errors
+without a decoded request have response metadata.
 
 ## Logging and delivery limitations
 
@@ -310,17 +414,32 @@ submission executor has an unbounded backlog. The shared MQ publisher has no con
 uv run ruff check .
 uv run ruff format --check .
 uv run mypy src tests
-uv run pytest -q
+uv run pytest -q --cov=src --cov-branch --cov-report=term-missing
 ```
 
-Validation on 2026-09-11 after removing the legacy orchestrator and migrating its tests:
-118 tests passed with 87% branch-inclusive coverage. Ruff lint, formatting, and strict mypy checks
-pass. Tests cover the active parser, workflow sequencing and retry budgets, product-informed
-generation, submission policies, and error publication. No live integration services were used.
+Validation on 2026-09-19 using the existing `.venv/Scripts/python.exe -m` tools:
 
-On this Windows environment, sandboxed pytest runs encounter temporary-directory access errors;
-the passing suite ran outside the sandbox with a fresh explicit `--basetemp` directory.
+| Check | Result |
+| --- | --- |
+| `ruff check .` | Passed. |
+| `ruff format --check .` | Passed; 45 files already formatted. |
+| `mypy src tests` | Failed with two `str \| None` versus `str` argument errors, in `src/__init__.py:10` and `tests/unit/test_app.py:97`. |
+| `pytest -q -p no:cacheprovider --basetemp=<fresh-directory> --cov=src --cov-branch --cov-report=term --tb=short` | 116 passed, 4 failed; 87% branch-inclusive coverage. |
+
+All four test failures are in `tests/unit/test_app.py`: the CLI worker-mode case, CLI client-mode
+case, and two invalid/missing CLI-mode cases. They expose the current native-startup behavior
+described above; the quality gate is not passing. The earlier 2026-09-11 result of 118 passing
+tests is a historical baseline, not the current result.
+
+Tests cover the active parser, workflow sequencing and retry budgets, product-informed
+generation, submission policies, and error publication. No live integration services were used.
+Sandboxed pytest encountered Windows temporary-directory access errors; the reported full-suite
+result came from a run outside the sandbox with a fresh explicit `--basetemp` directory.
+The README request example was schema-validated, all 23 application `OFTL_*` settings were
+checked for documentation coverage, and local Markdown links were checked for existing targets.
 See [AGENTS.MD](AGENTS.MD) for architecture, remaining gaps, and development instructions.
+Its older validation baseline and generic CLI examples predate the findings above; use the
+explicit client/worker commands in this README.
 
 ## Project structure
 
@@ -330,17 +449,11 @@ src/config/          Environment configuration
 src/infrastructure/  IBM MQ adapter
 src/utilities/       Logging, prompt, OpenAI, and response helpers
 prompts/             Templates and product JSON catalogue
+deployment/podman-compose/  Local Temporal stack, initialization scripts, dynamic configuration
+docs/samples/        Historical request and response examples; use the runtime schema
 tests/               Unit tests; integration package currently empty
 ```
 
 ## License
 
 Licensed under the [Apache License 2.0](LICENSE).
-
-### Temporal submission diagnostics
-
-Failed Temporal submissions log the stage (`connect` or `start`), workflow ID, task queue,
-reuse policy, exception type/message, and full traceback with chained causes. The wrapper
-RuntimeError retains the original cause. The request payload is not explicitly logged;
-exception text can contain details supplied by the SDK/server. Use the stage and traceback
-to distinguish connection configuration failures from workflow-start rejection.
