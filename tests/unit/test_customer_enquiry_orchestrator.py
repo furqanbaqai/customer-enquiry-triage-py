@@ -1,9 +1,21 @@
+"""
+Copyright 2026-2028 openfintechlab.com, Inc. All rights reserved.
+Licenses: LICENSE.md
+Description: Tests active request parsing and the Temporal processing pipeline.
+Reference: https://github.com/furqanbaqai/customer-enquiry-triage-py
+"""
+
+import asyncio
 import json
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from temporalio import workflow
+from temporalio.exceptions import ApplicationError
+from temporalio.testing import ActivityEnvironment
 
-from src.application.CustomerEnquiryOrchaestrator import CustomerEnquiryOrchestrator
+from src.application.activities.message_parser import RequestMessageParser
+from src.application.CustomerEnquiryOrchestrator_v2 import CustomerEnquiryOrchaestrator
 
 
 def valid_enquiry() -> dict[str, object]:
@@ -23,66 +35,51 @@ def valid_enquiry() -> dict[str, object]:
     }
 
 
-def test_parse_enquiry_message_loads_application_schema() -> None:
+def test_parser_loads_application_schema() -> None:
     enquiry = valid_enquiry()
-
-    parsed = CustomerEnquiryOrchestrator.parse_enquiry_message(json.dumps(enquiry).encode())
-
+    parsed = asyncio.run(
+        ActivityEnvironment().run(RequestMessageParser().parse_request_message, json.dumps(enquiry))
+    )
     assert parsed == enquiry
 
 
-def test_parse_enquiry_message_rejects_schema_violation() -> None:
+def test_parser_rejects_missing_required_field() -> None:
     enquiry = valid_enquiry()
     enquiry.pop("message")
+    with pytest.raises(ApplicationError, match="Request validation failed") as error:
+        asyncio.run(
+            ActivityEnvironment().run(
+                RequestMessageParser().parse_request_message, json.dumps(enquiry)
+            )
+        )
+    assert error.value.non_retryable
 
-    with pytest.raises(ValueError, match="does not match the request schema"):
-        CustomerEnquiryOrchestrator.parse_enquiry_message(json.dumps(enquiry).encode())
 
-
-def test_process_enquiry_sends_rendered_configured_prompt() -> None:
+def test_workflow_activity_budgets(monkeypatch: pytest.MonkeyPatch) -> None:
     enquiry = valid_enquiry()
-    prompt_loader = MagicMock()
-    prompt_loader.load_configured_prompt.return_value = "rendered prompt"
-    assessment = {"emotionalType": "Calm"}
-    generated_response = {
-        "greeting": "<p>Dear Valued Customer,</p>",
-        "body": "<p>Thank you for your inquiry.</p>",
-        "closing": "<p>We are here to help.</p>",
-        "signature": "Best regards,<br><b>Customer Support Team</b>",
-        "infoAvail": False,
-    }
-    prompt_sender = MagicMock(side_effect=[assessment, generated_response])
-    prompt_loader.load_configured_prompt.side_effect = [
-        "rendered assessment prompt",
-        "rendered response prompt",
-    ]
-    language_detector = MagicMock(return_value="eng")
-    response_message_utility = MagicMock()
-    orchestrator = CustomerEnquiryOrchestrator(
-        prompt_loader,
-        prompt_sender,
-        language_detector=language_detector,
-        response_message_utility=response_message_utility,
+    parser = AsyncMock(return_value=enquiry)
+    activities = AsyncMock(
+        side_effect=[
+            {"emotionalType": "Calm", "product_code": "SIB-RET-001"},
+            {"response": "We can help"},
+            {"meta": {"responseCode": "0000"}},
+        ]
     )
-
-    orchestrator.process_enquiry(json.dumps(enquiry).encode())
-
-    assert prompt_loader.load_configured_prompt.call_args_list == [
-        (("OFTL_AI_PROMPT_1", {
-            "MESSAGE": enquiry["message"],
-            "CATEGORY": enquiry["category"],
-        }),),
-        (("OFTL_AI_PROMPT_2", {
-            "INPUT_MESSAGE": enquiry["message"],
-            "INPUT_EMOTION": "Calm",
-            "PRODUCT_INFORMATION": enquiry["category"],
-        }),),
+    monkeypatch.setattr(workflow, "logger", MagicMock())
+    monkeypatch.setattr(workflow, "execute_activity", parser)
+    monkeypatch.setattr(workflow, "execute_activity_method", activities)
+    result = asyncio.run(CustomerEnquiryOrchaestrator().run(json.dumps(enquiry)))
+    assert result == {"meta": {"responseCode": "0000"}}
+    calls = [parser.await_args, *activities.await_args_list]
+    for call, attempt, total in zip(calls, [30, 300, 300, 30], [120, 540, 540, 180], strict=True):
+        assert call.kwargs["start_to_close_timeout"].total_seconds() == attempt
+        assert call.kwargs["schedule_to_close_timeout"].total_seconds() == total
+        policy = call.kwargs["retry_policy"]
+        assert policy.maximum_attempts == 5
+        assert policy.initial_interval.total_seconds() == 2
+        assert policy.maximum_interval.total_seconds() == 10
+    assert activities.await_args_list[1].kwargs["args"] == [
+        enquiry["message"],
+        "SIB-RET-001",
+        "Calm",
     ]
-    language_detector.assert_called_once_with(enquiry["message"])
-    assert prompt_sender.call_args_list == [
-        (("rendered assessment prompt",),),
-        (("rendered response prompt",),),
-    ]
-    response_message_utility.send_response_message.assert_called_once_with(
-        enquiry, assessment, generated_response, "0000", "Success"
-    )

@@ -9,6 +9,8 @@
       "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/src/__main__.py",
+      "args": ["WORKER"],
+      "env": {"TEMPORAL_DEBUG": "1"},
       "console": "integratedTerminal"
     }
   ]

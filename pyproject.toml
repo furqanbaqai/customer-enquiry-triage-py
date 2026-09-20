@@ -11,7 +11,9 @@ dependencies = [
     "lingua-language-detector>=2.2.0",
     "openai>=3.3.1",
     "python-dotenv>=1.2.3",
+    "rfc3339-validator>=0.1.4",
     "sqlalchemy>=2.0.52",
+    "temporalio>=1.32.0",
 ]
 
 [dependency-groups]
@@ -25,6 +27,8 @@ dev = [
 
 [project.scripts]
 customer-enquiry-triage = "src:main"
+customer-enquiry-triage-client = "src.app:main_client"
+customer-enquiry-triage-worker = "src.app:main_worker"
 
 [build-system]
 requires = ["hatchling"]

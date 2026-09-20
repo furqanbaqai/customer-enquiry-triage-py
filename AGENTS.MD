@@ -2,58 +2,145 @@
 
 ## Purpose and scope
 
-This repository is an early proof of concept for a long-running Python service that will consume customer enquiries from IBM MQ, classify them through an OpenAI-compatible endpoint, store tracking and history data in SQL Server, and publish classification results to an output queue.
+These instructions apply to the entire repository. Keep this file current when architecture,
+tooling, or required validation changes. This snapshot replaces the conflicting September 6-10
+runtime notes; the source and tests were updated on 2026-09-11 to remove the unused legacy
+orchestrator. The active Temporal workflow and registered names remain unchanged.
 
-The implemented runtime loads configuration, polls IBM MQ, dispatches enquiries to one application worker, validates requests, detects language, calls an OpenAI-compatible endpoint for assessment and response generation, and publishes a combined result envelope to IBM MQ. SQL Server persistence, backout publishing, duplicate detection, application-managed retries, and transaction handling remain unimplemented. Temporal appears only as a TODO. Result publishing is wired into orchestration, but the failure and shutdown paths have known gaps documented below; do not describe this as a production-ready delivery workflow.
-
-These instructions apply to the entire repository. Keep this file current when the architecture, tooling, or required validation changes.
+The application is a Python IBM MQ-to-Temporal customer enquiry triage proof of concept.
+The active workflow validates requests, classifies them through an OpenAI-compatible endpoint,
+generates a product-informed response, and publishes a response envelope to IBM MQ.
+SQL persistence, transactional delivery, backout handling, and application-level deduplication
+are not implemented.
 
 ## Repository map
 
-- `src/app.py`: application entry point and composition root. Construct and connect dependencies here; keep business rules out of it.
-- `src/__main__.py`: support for `python -m src`.
-- `src/application/CustomerEnquiryOrchaestrator.py`: request validation, language detection, two AI calls, and result publishing. Preserve the existing filename spelling unless a deliberate rename updates every import.
-- `src/application/schema/enquiry-request-v1.0.json`: bundled JSON Schema for incoming messages.
-- `src/domain/`: reserved for business entities, value objects, policies, and domain errors; currently empty apart from package initialization. Keep this layer independent of MQ, SQLAlchemy, HTTP clients, and environment configuration.
-- `src/infrastructure/ibm_mq.py`: validates IBM MQ settings, manages a bounded MQGET polling thread, and puts explicitly supplied response dictionaries on the configured result queue. Consumer and producer operations use separate connections.
-- `src/config/`: configuration loading and validation.
-- `src/utilities/`: small cross-cutting helpers such as logging, language detection, prompt loading, and response-envelope generation. Do not turn this into a miscellaneous business-logic package.
-- `tests/unit/`: fast, isolated tests.
-- `tests/integration/`: tests that exercise adapter boundaries or real/ephemeral services.
-
-Preserve the intended dependency direction: infrastructure depends on application/domain contracts; domain code must not import infrastructure.
+- `src/app.py`: composition root, CLIENT/WORKER mode selection, MQ callback and shutdown.
+- `src/application/CustomerEnquiryClient.py`: synchronous validation and Temporal submission.
+- `src/application/CustomerEnquiryOrchestrator_v2.py`: active Temporal workflow, with class spelling
+  `CustomerEnquiryOrchaestrator`. Preserve registered workflow/activity names for existing histories.
+- `src/application/CustomerEnquiryWorker.py`: registers the active workflow and four activities.
+- `src/application/activities/`: parser, classifier, generator, and response publisher.
+- `src/application/schema/enquiry-request-v1.0.json`: active request schema.
+- `src/infrastructure/ibm_mq.py`: MQ settings, polling, and separate result connection.
+- `src/utilities/`: logging, prompt loading, OpenAI calls, response envelope, language utility.
+- `src/config/`: process environment overrides project `.env`; decrypt is a placeholder.
+- `prompts/`: classification templates through v05, response template, 99 product JSON files.
+- `src/domain/` and `tests/integration/`: package initializers only; no persistence implementation.
 
 ## Current runtime behavior
 
-1. `src.app.main()` loads `.env` plus process environment values through `ConfigLoader`; process values win.
-2. It reads version and description from `pyproject.toml`, builds `IBMMQSettings`, and injects `ResponseMessageUtility(client)` into a shared orchestrator.
-3. The MQ adapter connects with `ibmmq.connect`, opens the configured request queue, and polls it with bounded MQGET waits on a managed thread.
-4. `dispatch_message` copies the payload up to MQ's reported `DataLength` and submits it to a `ThreadPoolExecutor(max_workers=1)`. The application worker is separate from the MQ polling thread; pending submissions are not bounded.
-5. The orchestrator validates UTF-8 JSON against the packaged schema and detects an ISO 639-3 language code, currently used only for logging. It renders `OFTL_AI_PROMPT_1` with `MESSAGE` and `CATEGORY`, parses the AI assessment as a JSON object, and requires a string `emotionalType`. It then renders `OFTL_AI_PROMPT_2` with `INPUT_MESSAGE`, `INPUT_EMOTION`, and `PRODUCT_INFORMATION` (currently the request category), calls the endpoint again, and publishes a response envelope with success code `0000`.
-6. Callback exceptions are logged and swallowed. The consumer currently uses `MQGMO_NO_SYNCPOINT`, so delivery is not transactional and failed messages are not automatically rolled back by this code.
-7. Registered console signals set a stop event. The `finally` block closes MQ resources before waiting for application workers, creating a risk while queued work is still publishing. A caught `KeyboardInterrupt` or `EOFError` exits with code 1; other exceptions inside the main run block exit with code 99.
+1. Run CLIENT and WORKER as separate processes. Both load configuration. CLIENT polls the
+   request queue and copies deliveries into a single-thread executor with an unbounded backlog.
+2. `on_message` invokes `CustomerEnquiryClient.sendToWorkflow`. Invalid callback reasons and
+   submission failures are logged; there is no retry, backout, or error-envelope publication here.
+3. The client decodes UTF-8 JSON and performs Draft 2020-12 schema validation with email/date-time
+   format checking. It reloads/checks the schema for each message. It requires a synchronous
+   caller without an active event loop and creates a fresh loop/client per enquiry.
+4. `Client.start_workflow` waits for start acceptance, not workflow completion. Its returned
+   handle is logged at DEBUG; no `handle.result()` is awaited. Later workflow failures are
+   handled by the workflow, not this callback.
+5. Endpoint: `OFTL_AI_TEMPORALURL`, default `localhost:7233`. Task queue:
+   `CUSTOMER.ENQUIRY.REQUEST`. ID: `CE-{channel.upper()}-{refNumber}`. Reuse policy comes from
+   `OFTL_AI_TEMPORALREUSE_POLICY`, default `ALLOW_DUPLICATE`, trimmed and uppercased for enum
+   lookup. Recognized names are ALLOW_DUPLICATE, ALLOW_DUPLICATE_FAILED_ONLY, REJECT_DUPLICATE,
+   and TERMINATE_IF_RUNNING. No explicit ID conflict policy or UTF-8 byte-length check exists.
+   Schema refNumber length is 1-36 characters and channel is restricted to seven values.
+6. Client timeouts: connection 30 seconds, start RPC 60 seconds, workflow execution 25 minutes,
+   workflow task 10 seconds. Existing executions retain their previously selected timeouts.
+7. WORKER creates an MQ result adapter at the composition root, injects ResponseMessageUtility,
+   connects to Temporal once, and calls `worker.run()`. It registers all four activities,
+   permits two concurrent activities, and configures a ten-minute graceful shutdown timeout.
+   The composition root closes the result adapter on exit. MQ result connection is opened lazily.
+8. The workflow runs parsing -> classification -> generation -> publication sequentially.
+   Classification receives the enquiry and returns a dictionary. The workflow requires string
+   `emotionalType` and accesses `product_code`. Generation receives enquiry text, product code,
+   and emotion, loads `prompts/product_json/{product_code}.json`, and renders the response prompt
+   with that serialized product information. This is a direct file lookup, with no vector search.
+9. AI calls and publishing run through `asyncio.to_thread`; parser file I/O is synchronous.
+   Activity boundaries use JSON-compatible `dict[str, Any]` annotations. Workflow activity imports
+   are passed through the sandbox; application configuration/logging must stay out of workflow code.
+10. MQGET uses MQGMO_NO_SYNCPOINT: requests are removed before validation or Temporal acceptance.
+    Output publication is independent. Failed submissions can lose requests and ambiguous puts
+    can produce duplicates. MQ descriptor correlation IDs are not propagated by dispatch.
 
-The schema requires `meta`, `mobileNumber`, `firstName`, `lastName`, `emailAddress`, `message`, `category`, and `receivedAt`; `customerId` is optional. `meta.refNumber`, `meta.channel`, and `meta.reqIssuedAt` are required, and additional properties are rejected. Although date-time and email formats are declared, the current `jsonschema.validate` call does not supply a format checker, so those formats are annotations rather than enforced validation.
+## Workflow outcomes and retry budgets
 
-## Context snapshot (2026-09-06)
+| Stage | Per-attempt timeout | Total activity budget | Terminal activity error code |
+| --- | --- | --- | --- |
+| Parsing | 30 seconds | 2 minutes | 8100 |
+| Classification | 5 minutes | 9 minutes | 8200 |
+| Generation | 5 minutes | 9 minutes | 8300 |
+| Publication | 30 seconds | 3 minutes | No recursive error publication |
 
-This snapshot reflects the working tree, including pre-existing edits to `src/app.py` and the sample response filename. Analysis did not change application code or samples.
+All policies allow at most five attempts, starting at two seconds with exponential backoff
+capped at ten seconds. Total activity budgets can end retries before five attempts occur.
+Parser input errors are non-retryable; schema file failures propagate for retry. Unlike the
+client, the parser does not configure a format checker.
 
-- Response wire keys are `meta`, `orignalMessage`, `aiAssesment`, and `aiGeneratedResponse`. Preserve these existing spellings unless deliberately changing the external contract. Response codes and descriptions are added to copied request metadata; MQ message descriptor correlation IDs are not propagated by the worker dispatch.
-- `OpenAIUtility` uses Chat Completions with model name `default`, configurable sampling, timeout, and streaming. `callJson` validates only that parsed JSON is an object; assessment and generated-response schemas are not enforced. Endpoint and prompt configuration are checked when used, rather than comprehensively at startup.
-- Prompt templates are cached by resolved path per loader. The repository contains classification variants through v05 and 99 product JSON files. Runtime does not load that product catalogue: response generation receives only the category string as product information. `.env.example` selects the unversioned classification template and the v1.0 response template; it does not establish the developer's private configuration.
-- Failure handlers attempt result publication with codes `8100`, `8101`, or `9999`, but parsing failures can reference `enquiry_message` before assignment. Error handlers also dereference an optional response utility without checking it, and publication failures can mask the original error. Schema validation is already translated into `ValueError`, so the outer `ValidationError` handler does not catch normal request-schema failures.
-- MQ reads use no syncpoint and output puts are not coordinated with input removal. There is no durable worker backlog, rollback, recovery loop after a fatal polling error, or backout handling. SQLAlchemy is a dependency without a persistence implementation; `src/domain` and `tests/integration` contain only package initializers.
-- Debug logging currently includes the MQ settings dataclass (including its password), rendered enquiry prompts, and AI responses. This violates the intended secret/customer-data logging rules below and needs correction before enabling debug logging with real data.
-- Classification v05 lists `Angry`, `Frustrated`, and `Calm` as the permitted emotions but shows `Concerned` in its output example. Prompt examples and runtime output validation need alignment.
+Success publishes code `0000` and returns the envelope. Terminal processing activity failures
+publish the stage code with the decoded original and available partial results, then fail the
+workflow with a non-retryable ApplicationError. Exceptions inside workflow processing (including
+missing AI fields/type checks) publish `9999`. Cancellation propagates. Publication failure,
+workflow termination, and execution timeout do not use another business-error publication path.
 
-Validation baseline using the existing Python 3.13.14 virtual environment:
+Preserve wire spellings: `meta`, `orignalMessage`, `aiAssesment`, `aiGeneratedResponse`.
+Response metadata adds responseCode/responseDescription. Error envelopes retain metadata even
+without an original object; malformed original metadata stays under orignalMessage. Success
+requires original metadata to be a mapping. Missing partial results are omitted from the envelope.
 
-- `.venv\Scripts\ruff.exe check .`: passed.
-- `.venv\Scripts\python.exe -m ruff format --check .`: one existing formatting failure in `tests/unit/test_customer_enquiry_orchestrator.py`.
-- `.venv\Scripts\python.exe -m mypy src tests`: three `union-attr` errors in orchestration exception handlers (lines 118, 131, 151 at review time).
-- `.venv\Scripts\python.exe -m pytest --cov=src --cov-branch --cov-report=term-missing -q`: 27 passed, one failure (`test_main_starts_consumer`, unexpected `SystemExit: 1`), and 13 setup errors caused by denied temporary-directory access. Retrying with `-p no:cacheprovider --basetemp=.pytest_cache/context-review-20260906` still encountered directory access errors. Reported 72% coverage is from this incomplete run, not a clean baseline.
-- No live MQ, AI, or database integration was exercised. Existing findings are recorded for follow-up; documentation maintenance does not authorize silently changing runtime behavior.
+## AI, prompts, and observability
+
+- OpenAIUtility uses Chat Completions, model `default`, configurable sampling/streaming and a
+  default 300-second HTTP timeout. callJson checks only that decoded JSON is an object.
+- Classification template variables: MESSAGE and CATEGORY. Generation variables: INPUT_MESSAGE,
+  INPUT_EMOTION, PRODUCT_INFORMATION. Templates are cached by resolved path per loader.
+- `.env.example` selects classification v04 with the supported MESSAGE/CATEGORY placeholders.
+  Both configured templates were verified to render. The unversioned classification template
+  remains incompatible with the active caller. All 23 application OFTL_* variables are documented
+  in README and the example, whose service addresses target Docker Desktop host connectivity.
+- Product codes from the model are not validated against a catalogue allowlist or checked for
+  path containment before file access. Unknown products fail generation; response schemas are
+  not comprehensively enforced. Classification v05 also has inconsistent emotion examples.
+- Use workflow.logger in workflows, activity.logger in activities, and centralized Logging in
+  other service code. No activity heartbeats or custom progress-to-portal mechanism exists.
+  Logger calls are worker logs, not custom workflow history events.
+- OpenAI INFO logs contain elapsed time, model/response ID, token usage when available, and
+  response character count. DEBUG logs expose rendered prompts and AI responses; MQ settings
+  DEBUG logging includes credentials. These remain unresolved data-exposure findings.
+
+## Known gaps and validation baseline (2026-09-11)
+
+- No SQL persistence, durable application backlog, transactional MQ handoff, backout processing,
+  or exactly-once output. ALLOW_DUPLICATE permits repeat processing after a closed execution.
+- Shared MQ result adapter may be used by concurrent publishing threads; no synchronization is
+  implemented. No live concurrency/delivery validation was performed.
+- Client reuse-policy parsing lacks a type guard before `.strip()`; unknown names become ValueError.
+- The unused legacy orchestration module has been removed. Its parser tests now exercise
+  RequestMessageParser; active workflow tests cover sequencing, payloads, budgets, partial
+  results, and error publication. Client tests verify start acceptance and all reuse policies.
+  Generator tests use the three-string activity interface and mocked product JSON.
+- Fresh checks used `.venv/Scripts/python.exe -m`:
+  - `ruff check .`: passed.
+  - `ruff format --check .`: passed (44 files).
+  - `mypy src tests`: passed (37 source files).
+  - `pytest -q -p no:cacheprovider --basetemp=<fresh-directory> --cov=src --cov-branch
+    --cov-report=term-missing --tb=short`: 118 passed; 87% branch-inclusive coverage.
+- Sandboxed pytest runs hit WinError 5 on temporary directories, including a fresh workspace
+  directory. The passing full suite ran outside the sandbox using a fresh explicit basetemp.
+  This is an environment limitation; no tests were skipped or weakened to bypass it.
+- No live MQ, Temporal, AI, database, replay, or concurrency integration was exercised.
+
+## Container startup
+
+The Dockerfile uses Python 3.13 Debian 13 dev/runtime stages and disables uv Python downloads.
+The builder runs uv sync --frozen --no-dev --python /usr/bin/python3. Runtime copies the venv,
+MQ client, source, pyproject.toml, and prompts, then runs as UID/GID 65532 with readable assets.
+CMD invokes src.app.main with explicit OFTL_RUN_MODE (default WORKER), validating CLIENT/WORKER.
+It does not invoke uv at startup. Passing an explicit mode also avoids the current app.py
+fallback expression using bitwise `|`; that separate native-startup bug remains unchanged.
+The build attempt on 2026-09-12 was blocked by Docker Desktop DNS resolution for
+production.cloudfront.docker.com before compilation. Full image validation remains pending.
 
 ## Environment and commands
 
@@ -64,9 +151,9 @@ The project requires Python 3.12 or newer, while `.python-version` currently sel
 uv sync --dev
 
 # Run the service
-uv run python -m src
+uv run python -m src CLIENT
 # Equivalent installed entry point
-uv run customer-enquiry-triage
+uv run customer-enquiry-triage CLIENT
 
 # Run all tests
 uv run pytest -q

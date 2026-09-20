@@ -1,9 +1,13 @@
 from pathlib import Path
 
+import pytest
+
 from src.config import ConfigLoader
 
 
-def test_get_returns_configuration_by_key(tmp_path: Path) -> None:
+def test_get_returns_configuration_by_key(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(ConfigLoader, "configurations", {})
+    monkeypatch.delenv("GENAI_URL", raising=False)
     env_file = tmp_path / ".env"
     env_file.write_text(
         "GENAI_URL=https://example.com/v1/chat/completions\napi_lowercase=ignored\n",
