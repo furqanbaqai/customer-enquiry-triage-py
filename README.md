@@ -248,21 +248,42 @@ Docker Desktop could not resolve `production.cloudfront.docker.com`. No replacem
 produced in that attempt. The image build was not rerun during this documentation review;
 the historical failure does not establish the current network or image status.
 
-### Select the container mode
+### Run the worker and client with Docker or Podman
 
 Set `OFTL_RUN_MODE` when starting the container. It accepts `WORKER` or `CLIENT` and defaults
-to `WORKER`. Rebuild the image after changing the Dockerfile, then run the modes as separate
-containers:
+to `WORKER`. Use [worker-oftl.env](worker-oftl.env) for the worker and
+[client-oftl.env](client-oftl.env) for the client; these files already set their respective modes.
+Run the commands from the application directory, with `customer-enquiry-triage:0.1.0`
+available in the selected container engine's local image store. Docker and Podman use separate
+image stores; an image built in Docker must be imported or built in Podman before using it there.
+
+Review the service addresses and credentials in both files before starting. Use literal
+`KEY=value` entries without surrounding quotes, inline comments, or shell expansion for
+`--env-file`. In particular, remove the surrounding quotes currently present on the MQ host,
+Temporal address, and MQ credential values, and supply the intended MQ credentials.
+
+Docker (run each command in a separate terminal):
 
 ```powershell
-docker run --rm --name enquiry-worker --env-file .env -e OFTL_RUN_MODE=WORKER customer-enquiry-triage:0.1.0
-docker run --rm --name enquiry-client --env-file .env -e OFTL_RUN_MODE=CLIENT customer-enquiry-triage:0.1.0
+docker run --rm --name enquiry-worker --env-file worker-oftl.env customer-enquiry-triage:0.1.0
+docker run --rm --name enquiry-client --env-file client-oftl.env customer-enquiry-triage:0.1.0
 ```
 
-Run these commands in separate terminals. The Docker CMD reads the environment variable and
+Podman (run each command in a separate terminal):
+
+```powershell
+podman run --rm --name enquiry-worker --env-file worker-oftl.env customer-enquiry-triage:0.1.0
+podman run --rm --name enquiry-client --env-file client-oftl.env customer-enquiry-triage:0.1.0
+```
+
+Choose one engine and start both containers for end-to-end processing. `--rm` removes each
+container when it exits. To override a file's mode, add `-e OFTL_RUN_MODE=WORKER` or
+`-e OFTL_RUN_MODE=CLIENT` before the image name.
+
+The Docker CMD reads the environment variable and
 passes it explicitly to `src.app.main(mode)`; an empty or unsupported value fails launcher
 validation. Native Python commands continue to use an explicit `CLIENT` or `WORKER` argument.
-Configure MQ, Temporal, and AI addresses in `.env` to be reachable from the containers;
+Configure MQ, Temporal, and AI addresses in both env files to be reachable from the containers;
 `localhost` inside a container refers to that container. The application runs in the container's Python process without an intermediate shell or uv process.
 
 ## Configuration
