@@ -64,6 +64,11 @@ are not implemented.
 10. MQGET uses MQGMO_NO_SYNCPOINT: requests are removed before validation or Temporal acceptance.
     Output publication is independent. Failed submissions can lose requests and ambiguous puts
     can produce duplicates. MQ descriptor correlation IDs are not propagated by dispatch.
+11. Both application modes inject a fatal MQ error callback. MQ connect, queue-open, receive,
+    and publish failures log the error and terminate the entire process with status 1 via
+    `os._exit`, including failures on background threads. Empty-queue polling is exempt.
+    Fatal exits bypass cleanup and in-flight work; no reconnection or idle publisher health
+    check is implemented. Detection occurs when the MQ library reports the failure.
 
 ## Workflow outcomes and retry budgets
 

@@ -84,7 +84,7 @@ def main(attMode: str = "") -> None:
     if mode == "CLIENT":
         _run_mq_client()
     elif mode == "WORKER":
-        result_client = IBMMQClient(IBMMQSettings.from_config())
+        result_client = IBMMQClient(IBMMQSettings.from_config(), on_fatal_error=_exit_on_mq_error)
         try:
             asyncio.run(CustomerEnquiryWorker.start(ResponseMessageUtility(result_client)))
         except KeyboardInterrupt:
@@ -106,10 +106,20 @@ def main_worker() -> None:
     main(attMode="WORKER")
 
 
+def _exit_on_mq_error(error: Exception) -> None:
+    """Terminate the entire process, including MQ and Temporal worker threads."""
+    try:
+        Logging.error("[CEP] Fatal IBM MQ failure; exiting with status 1: %s", error)
+    finally:
+        # SystemExit only exits the calling thread. Do not wait for queued enquiries,
+        # Temporal retries, or cleanup against invalid MQ handles after a connection loss.
+        os._exit(1)
+
+
 def _run_mq_client() -> None:
     """Start the IBM MQ consumer and wait for shutdown."""
 
-    client = IBMMQClient(IBMMQSettings.from_config())
+    client = IBMMQClient(IBMMQSettings.from_config(), on_fatal_error=_exit_on_mq_error)
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="enquiry-worker")
     stop_event = Event()
 

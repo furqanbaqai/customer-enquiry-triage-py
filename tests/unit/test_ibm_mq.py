@@ -155,3 +155,73 @@ def test_client_translates_result_queue_put_failure(monkeypatch: pytest.MonkeyPa
 
     with pytest.raises(RuntimeError, match=r"\[ERR-38\]"):
         client.put_result_message({})
+
+
+@pytest.mark.parametrize(
+    "operation", ["connect", "open", "get", "result_connect", "result_open", "put"]
+)
+@pytest.mark.parametrize("reason", [2009, 2059, 2161])
+def test_mq_failure_notifies_process_owner(
+    monkeypatch: pytest.MonkeyPatch, operation: str, reason: int
+) -> None:
+    mq = ibm_mq_module.__dict__["ibmmq"]
+    failure = mq.MQMIError(2, reason)
+    queue = MagicMock()
+    connect = MagicMock(return_value=MagicMock())
+    open_queue = MagicMock(return_value=queue)
+    monkeypatch.setattr(mq, "connect", connect)
+    monkeypatch.setattr(mq, "Queue", open_queue)
+    monkeypatch.setattr(ibm_mq_module, "Thread", MagicMock())
+    on_fatal_error = MagicMock()
+    client = IBMMQClient(
+        IBMMQSettings("QM1", "CHANNEL", 1414, "user", "password", "host"),
+        on_fatal_error=on_fatal_error,
+    )
+
+    if operation in {"connect", "result_connect"}:
+        connect.side_effect = failure
+    elif operation in {"open", "result_open"}:
+        open_queue.side_effect = failure
+    elif operation == "put":
+        queue.put.side_effect = failure
+    else:
+        queue.get.side_effect = failure
+
+    callback = MagicMock()
+    if operation == "get":
+        client.start_consumer(callback)
+        client._consume_messages(callback)
+        callback.assert_not_called()
+        queue.get.assert_called_once()
+    elif operation.startswith("result_") or operation == "put":
+        with pytest.raises(RuntimeError, match=r"\[ERR-38\]") as error:
+            client.put_result_message({})
+        assert error.value.__cause__ is failure
+    else:
+        with pytest.raises(mq.MQMIError) as error:
+            client.start_consumer(callback)
+        assert error.value is failure
+
+    on_fatal_error.assert_called_once_with(failure)
+    assert client._consumer_stop.is_set()
+
+
+def test_empty_queue_continues_polling_without_fatal_notification(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mq = ibm_mq_module.__dict__["ibmmq"]
+    queue = MagicMock()
+    queue.get.side_effect = [mq.MQMIError(2, mq.CMQC.MQRC_NO_MSG_AVAILABLE), b"next"]
+    monkeypatch.setattr(mq, "connect", MagicMock(return_value=MagicMock()))
+    monkeypatch.setattr(mq, "Queue", MagicMock(return_value=queue))
+    monkeypatch.setattr(ibm_mq_module, "Thread", MagicMock())
+    fatal = MagicMock()
+    client = IBMMQClient(IBMMQSettings("QM1", "CHANNEL", 1414, "user", "password", "host"), fatal)
+    callback = MagicMock(side_effect=lambda **_kwargs: client._consumer_stop.set())
+    client.start_consumer(callback)
+    client._consume_messages(callback)
+
+    assert queue.get.call_count == 2
+    callback.assert_called_once()
+    assert callback.call_args.kwargs["msg"] == b"next"
+    fatal.assert_not_called()

@@ -1,5 +1,7 @@
 import logging
+import os
 import signal
+import subprocess
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
@@ -11,7 +13,7 @@ from src.application.CustomerEnquiryClient import CustomerEnquiryClient
 from src.application.CustomerEnquiryWorker import CustomerEnquiryWorker
 from src.config import ConfigLoader
 from src.infrastructure import IBMMQSettings
-from src.utilities import ResponseMessageUtility
+from src.utilities import Logging, ResponseMessageUtility
 
 
 def test_display_project_information(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -36,17 +38,19 @@ def test_main_starts_consumer(
     monkeypatch.setattr(CustomerEnquiryClient, "sendToWorkflow", submit)
     monkeypatch.setattr(signal, "signal", MagicMock())
     client = MagicMock()
+    client_factory = MagicMock(return_value=client)
     executor = MagicMock()
     wait_event = MagicMock()
     monkeypatch.setattr(ConfigLoader, "load_configurations", MagicMock())
     monkeypatch.setattr(IBMMQSettings, "from_config", MagicMock())
-    monkeypatch.setattr(app, "IBMMQClient", MagicMock(return_value=client))
+    monkeypatch.setattr(app, "IBMMQClient", client_factory)
     monkeypatch.setattr(app, "Event", MagicMock(return_value=wait_event))
     monkeypatch.setattr(app, "ThreadPoolExecutor", MagicMock(return_value=executor))
 
     app.main("CLIENT")
 
     client.start_consumer.assert_called_once()
+    assert client_factory.call_args.kwargs["on_fatal_error"] is app._exit_on_mq_error
     callback = client.start_consumer.call_args.args[0]
     callback(msg=b"customer request", cbc=MagicMock(Reason=0, DataLength=8))
     executor.submit.assert_called_once()
@@ -97,6 +101,7 @@ def test_worker_mode_composes_and_closes_result_client(
     app.main(None if from_cli else "WORKER")
 
     client_factory.assert_called_once()
+    assert client_factory.call_args.kwargs["on_fatal_error"] is app._exit_on_mq_error
     client_factory.return_value.start_consumer.assert_not_called()
     client_factory.return_value.close.assert_called_once_with()
     configuration_loader.assert_called_once_with()
@@ -135,3 +140,34 @@ def test_on_message_rejects_mq_callback_error(caplog: pytest.LogCaptureFixture) 
 
     assert "IBM MQ callback reported reason code 2033" in caplog.messages
     assert not any("Received IBM MQ request message" in message for message in caplog.messages)
+
+
+def test_mq_fatal_error_exits_entire_process_from_background_thread() -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from threading import Thread; from src.app import _exit_on_mq_error; "
+            "thread = Thread(target=_exit_on_mq_error, "
+            "args=(RuntimeError('MQRC_CONNECTION_BROKEN'),)); "
+            "thread.start(); thread.join()",
+        ],
+        cwd=Path(__file__).resolve().parents[2],
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+    )
+    assert result.returncode == 1
+    assert "Fatal IBM MQ failure; exiting with status 1" in result.stderr
+
+
+def test_mq_fatal_error_exits_even_if_logging_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(Logging, "error", MagicMock(side_effect=RuntimeError("logging failed")))
+    exit_process = MagicMock(side_effect=SystemExit(1))
+    monkeypatch.setattr(os, "_exit", exit_process)
+
+    with pytest.raises(SystemExit):
+        app._exit_on_mq_error(RuntimeError("MQRC_CONNECTION_BROKEN"))
+
+    exit_process.assert_called_once_with(1)

@@ -89,8 +89,13 @@ class IBMMQSettings:
 class IBMMQClient:
     """Manage an IBM MQ client connection and asynchronous request consumer."""
 
-    def __init__(self, settings: IBMMQSettings) -> None:
+    def __init__(
+        self,
+        settings: IBMMQSettings,
+        on_fatal_error: Callable[[Exception], None] | None = None,
+    ) -> None:
         self._settings = settings
+        self._on_fatal_error = on_fatal_error
         self._queue_manager: Any | None = None
         self._result_queue_manager: Any | None = None
         self._request_queue: Any | None = None
@@ -103,14 +108,28 @@ class IBMMQClient:
         if self._queue_manager is not None:
             return
 
+        try:
+            self._queue_manager = self._connect_queue_manager()
+        except ibmmq.MQMIError as error:
+            self._report_fatal_error(error)
+            raise
+
+    def _connect_queue_manager(self) -> Any:
+        """Create an MQ connection using the configured credentials."""
         connection_name = f"{self._settings.host}({self._settings.listener})"
-        self._queue_manager = ibmmq.connect(
+        return ibmmq.connect(
             self._settings.queue_manager,
             self._settings.channel,
             connection_name,
             user=self._settings.username,
             password=self._settings.password,
         )
+
+    def _report_fatal_error(self, error: Exception) -> None:
+        """Stop consumption and notify the process owner from any MQ thread."""
+        self._consumer_stop.set()
+        if self._on_fatal_error is not None:
+            self._on_fatal_error(error)
 
     def start_consumer(self, callback: MessageCallback) -> None:
         """Open the request queue and start bounded MQGET polling on a worker thread."""
@@ -127,11 +146,15 @@ class IBMMQClient:
 
         object_descriptor = ibmmq.OD()
         object_descriptor.ObjectName = self._settings.request_queue
-        self._request_queue = ibmmq.Queue(
-            queue_manager,
-            object_descriptor,
-            ibmmq.CMQC.MQOO_INPUT_AS_Q_DEF | ibmmq.CMQC.MQOO_FAIL_IF_QUIESCING,
-        )
+        try:
+            self._request_queue = ibmmq.Queue(
+                queue_manager,
+                object_descriptor,
+                ibmmq.CMQC.MQOO_INPUT_AS_Q_DEF | ibmmq.CMQC.MQOO_FAIL_IF_QUIESCING,
+            )
+        except ibmmq.MQMIError as error:
+            self._report_fatal_error(error)
+            raise
 
         self._consumer_stop.clear()
         self._consumer_thread = Thread(
@@ -167,6 +190,7 @@ class IBMMQClient:
                 if error.reason == ibmmq.CMQC.MQRC_NO_MSG_AVAILABLE:
                     continue
                 Logging.error("[ERR-42] IBM MQ request polling failed: %s", error)
+                self._report_fatal_error(error)
                 return
             callback(
                 queue_manager=queue_manager,
@@ -181,14 +205,7 @@ class IBMMQClient:
         """Serialize and put a response message on the configured result queue."""
         try:
             if self._result_queue_manager is None:
-                connection_name = f"{self._settings.host}({self._settings.listener})"
-                self._result_queue_manager = ibmmq.connect(
-                    self._settings.queue_manager,
-                    self._settings.channel,
-                    connection_name,
-                    user=self._settings.username,
-                    password=self._settings.password,
-                )
+                self._result_queue_manager = self._connect_queue_manager()
             result_queue_manager = self._result_queue_manager
             if result_queue_manager is None:
                 raise RuntimeError("[ERR-40] IBM MQ result connection was not established")
@@ -204,6 +221,9 @@ class IBMMQClient:
 
             payload = json.dumps(message, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
             self._result_queue.put(payload)
+        except ibmmq.MQMIError as error:
+            self._report_fatal_error(error)
+            raise RuntimeError("[ERR-38] Unable to put the response message on IBM MQ") from error
         except RuntimeError:
             raise
         except Exception as error:

@@ -21,7 +21,16 @@ other accepted names are `ALLOW_DUPLICATE_FAILED_ONLY`, `REJECT_DUPLICATE`, and
 Client timeouts are 30 seconds for connection, 60 seconds for the start RPC, 25 minutes for
 workflow execution, and 10 seconds for a workflow task. The worker connects once, registers
 four activities, limits concurrent activities to two, and configures ten minutes for graceful
-shutdown. WORKER mode requires MQ settings and closes its result adapter on exit.
+shutdown. WORKER mode requires MQ settings and closes its result adapter on normal exit.
+
+Both modes terminate the process with exit status `1` as soon as an IBM MQ connection,
+queue-open, receive, or publish operation reports an MQ error, including
+`MQRC_CONNECTION_BROKEN` (2009). An empty request queue (`MQRC_NO_MSG_AVAILABLE`) is normal
+and polling continues. Fatal MQ errors bypass graceful shutdown, pending work, and Temporal
+publication retries so the application cannot remain running with invalid MQ handles.
+Automatic reconnection is not attempted; restart the process after restoring MQ connectivity
+(or configure your process supervisor to restart it). Detection depends on the MQ client
+reporting the error; an idle publisher has no background connection health check.
 
 ## Prerequisites
 
