@@ -1,0 +1,18 @@
+{
+  "product_code": "SIB-RET-102",
+  "product_name": "Cardless Cash Withdrawal",
+  "segment": "Retail",
+  "description": "Self-service cash withdrawal at SIB ATMs without presenting a physical debit card, initiated through the SIB Digital App.",
+  "eligibility": [
+    "Eligible SIB account",
+    "Access to the SIB Digital App",
+    "Registered mobile number for OTP verification"
+  ],
+  "features": [
+    "Select the account and withdrawal amount in the app",
+    "create a four-digit Cardless PIN",
+    "choose Cardless Cash Withdrawal at an SIB ATM",
+    "authenticate using the registered-mobile OTP and Cardless PIN",
+    "verify and collect cash"
+  ]
+}

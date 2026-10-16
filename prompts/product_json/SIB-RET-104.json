@@ -1,0 +1,14 @@
+{
+  "product_code": "SIB-RET-104",
+  "product_name": "ATM Network",
+  "segment": "Retail",
+  "description": "SIB's network of automated teller machines providing convenient self-service banking access.",
+  "eligibility": [
+    "Eligible SIB card or account, or supported cardless-withdrawal access",
+    "Transaction-specific restrictions may apply"
+  ],
+  "features": [
+    "Access to SIB ATMs for supported cash and banking transactions",
+    "Cardless Cash Withdrawal at SIB ATMs where the service is supported"
+  ]
+}

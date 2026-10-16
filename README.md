@@ -352,9 +352,10 @@ startup. CLIENT does not call the AI endpoint.
 | `OFTL_OPENAI_STREAM` | `False` | `true` or `false`, case-insensitive; no numeric/yes/no aliases. |
 | `OFTL_AI_PROMPT_1` | Required; example `prompts/customer_enquiry_triage_v04.md` | Classification template; no code default path. |
 | `OFTL_AI_PROMPT_2` | Required; example `prompts/message-generation/enquiry-message-generator-v1.0.md` | Response-generation template; no code default path. |
+| `OFTL_AI_PRODUCTCAT` | Optional; default `<project>/prompts/product_json` | Product catalogue folder. Each lookup appends `{product_code}.json`; unset or empty uses the bundled folder. |
 
 The model name is fixed as `default`; no model environment variable is implemented. Product
-JSON comes from `prompts/product_json/`, also not an environment-configurable path.
+JSON comes from the folder configured by `OFTL_AI_PRODUCTCAT`, defaulting to `prompts/product_json/`.
 
 ### Logging
 

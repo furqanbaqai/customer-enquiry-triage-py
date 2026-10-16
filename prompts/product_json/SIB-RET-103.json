@@ -1,0 +1,21 @@
+{
+  "product_code": "SIB-RET-103",
+  "product_name": "Smart Kiosk",
+  "segment": "Retail",
+  "description": "Self-service banking kiosks at selected SIB branches allowing customers to perform routine banking transactions without branch-counter assistance.",
+  "eligibility": [
+    "Existing customer or eligible prospective customer",
+    "Use of a Smart Kiosk at a selected SIB branch",
+    "Service availability subject to relevant product requirements",
+    "Customer verification requirements apply"
+  ],
+  "features": [
+    "Open Current or Savings Accounts",
+    "open an additional Savings Account",
+    "request or print statements and account/balance certificates",
+    "request and print cheque books",
+    "apply for finance or Covered Cards",
+    "update ID/passport/mobile/email/address details",
+    "replace and print cards"
+  ]
+}

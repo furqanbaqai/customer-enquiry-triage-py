@@ -9,6 +9,34 @@ from temporalio.converter import DataConverter
 from temporalio.testing import ActivityEnvironment
 
 from src.application.activities.message_generator import MessageGenerator
+from src.config import ConfigLoader
+
+
+@pytest.fixture(autouse=True)
+def isolate_configuration(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(ConfigLoader, "configurations", {"TEST": "1"})
+
+
+@pytest.mark.parametrize("catalogue", [None, "", "custom/product catalogue"])
+def test_product_catalogue_folder(catalogue: str | None, monkeypatch: pytest.MonkeyPatch) -> None:
+    if catalogue is not None:
+        monkeypatch.setitem(ConfigLoader.configurations, "OFTL_AI_PRODUCTCAT", catalogue)
+    opened_paths: list[Path] = []
+    product_open = mock_open(read_data="{}")
+
+    def open_product(path: Path, *, encoding: str) -> object:
+        opened_paths.append(path)
+        return product_open(encoding=encoding)
+
+    monkeypatch.setattr(Path, "open", open_product)
+    generator = MessageGenerator(MagicMock(), MagicMock(return_value={}))
+    generator._getAIResponseMessage("Help", "SIB-RET-001", "Calm")
+    expected_folder = (
+        Path(catalogue)
+        if catalogue
+        else Path(__file__).resolve().parents[2] / "prompts" / "product_json"
+    )
+    assert opened_paths == [expected_folder / "SIB-RET-001.json"]
 
 
 @pytest.mark.parametrize("key", ["OFTL_AI_PROMPT_2", "CUSTOM_RESPONSE_PROMPT"])

@@ -1,0 +1,14 @@
+{
+  "product_code": "SIB-RET-105",
+  "product_name": "Phone Banking",
+  "segment": "Retail",
+  "description": "SIB's telephone banking channel providing access to banking assistance and supported services remotely.",
+  "eligibility": [
+    "SIB customer using the phone banking channel",
+    "Customer authentication may apply",
+    "Service eligibility may apply"
+  ],
+  "features": [
+    "Around-the-clock phone-banking availability for eligible customer banking enquiries and services"
+  ]
+}

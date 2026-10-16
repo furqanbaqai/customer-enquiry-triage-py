@@ -1,0 +1,15 @@
+{
+  "product_code": "SIB-RET-107",
+  "product_name": "E-statement",
+  "segment": "Retail",
+  "description": "Paperless banking-statement service enabling electronic access to account summaries.",
+  "eligibility": [
+    "Eligible SIB account or product",
+    "Required digital or contact registration",
+    "Additional eligibility criteria not specified on the source page"
+  ],
+  "features": [
+    "Electronic account summaries",
+    "paperless statement access remotely, including while away from the branch"
+  ]
+}

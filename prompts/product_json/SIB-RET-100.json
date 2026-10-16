@@ -1,0 +1,23 @@
+{
+  "product_code": "SIB-RET-100",
+  "product_name": "Mobile Banking - SIB Digital App",
+  "segment": "Retail",
+  "description": "SIB's mobile banking platform enabling customers to access and manage banking services remotely using the SIB Digital App.",
+  "eligibility": [
+    "SIB retail customer",
+    "Access to the SIB Digital App",
+    "Applicable account credentials",
+    "Individual transactions and account opening subject to product eligibility and verification"
+  ],
+  "features": [
+    "Utility, telecom and Salik bill payments",
+    "instant transfers",
+    "free remittances to India and Pakistan",
+    "digital account opening",
+    "deposits",
+    "card activation/blocking",
+    "cheque book and certificate requests",
+    "customer profile and KYC updates",
+    "registration and credential recovery"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "product_code": "SIB-RET-101",
+  "product_name": "Online Banking",
+  "segment": "Retail",
+  "description": "SIB's browser-based banking channel for remote access to eligible banking services, payments and account transactions.",
+  "eligibility": [
+    "Registered for SIB Online Banking",
+    "Holds eligible SIB banking products",
+    "Authentication required",
+    "Service-specific conditions apply"
+  ],
+  "features": [
+    "Remote banking access",
+    "online transactions and payments",
+    "digital management of banking needs",
+    "access to eligible services and tailored offers without visiting a branch"
+  ]
+}

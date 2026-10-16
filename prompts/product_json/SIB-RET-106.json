@@ -1,0 +1,14 @@
+{
+  "product_code": "SIB-RET-106",
+  "product_name": "SMS Banking",
+  "segment": "Retail",
+  "description": "SMS-based banking channel offering access to supported banking information and notifications through mobile text messages.",
+  "eligibility": [
+    "SIB customer with eligible services",
+    "Registered mobile number",
+    "Exact SMS service scope not specified on the source page"
+  ],
+  "features": [
+    "Receive supported banking notifications and information through SMS as an alternative remote communication channel"
+  ]
+}

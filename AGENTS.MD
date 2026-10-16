@@ -55,7 +55,8 @@ are not implemented.
 8. The workflow runs parsing -> classification -> generation -> publication sequentially.
    Classification receives the enquiry and returns a dictionary. The workflow requires string
    `emotionalType` and accesses `product_code`. Generation receives enquiry text, product code,
-   and emotion, loads `prompts/product_json/{product_code}.json`, and renders the response prompt
+   and emotion, loads `{product_code}.json` from `OFTL_AI_PRODUCTCAT` (unset or empty defaults to
+   the project `prompts/product_json` folder), and renders the response prompt
    with that serialized product information. This is a direct file lookup, with no vector search.
 9. AI calls and publishing run through `asyncio.to_thread`; parser file I/O is synchronous.
    Activity boundaries use JSON-compatible `dict[str, Any]` annotations. Workflow activity imports
@@ -97,7 +98,7 @@ requires original metadata to be a mapping. Missing partial results are omitted 
   INPUT_EMOTION, PRODUCT_INFORMATION. Templates are cached by resolved path per loader.
 - `.env.example` selects classification v04 with the supported MESSAGE/CATEGORY placeholders.
   Both configured templates were verified to render. The unversioned classification template
-  remains incompatible with the active caller. All 23 application OFTL_* variables are documented
+  remains incompatible with the active caller. All 24 application OFTL_* variables are documented
   in README and the example, whose service addresses target Docker Desktop host connectivity.
 - Product codes from the model are not validated against a catalogue allowlist or checked for
   path containment before file access. Unknown products fail generation; response schemas are
