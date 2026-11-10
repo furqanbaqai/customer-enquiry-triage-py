@@ -4,6 +4,21 @@ Python proof of concept that consumes customer enquiries from IBM MQ, starts Tem
 classifies enquiries through an OpenAI-compatible endpoint, generates product-informed responses,
 and publishes response envelopes to IBM MQ.
 
+## Monorepo structure
+
+This repository contains two independent Python projects:
+
+| Directory | Package | Status |
+| --- | --- | --- |
+| Repository root | `customer-enquiry-triage` | MQ-to-Temporal triage service described below; runs CLIENT and WORKER processes. |
+| [`app.util.publish-messages/`](app.util.publish-messages/README.md) | `util.publish.mq` | Publishing utility scaffold; currently prints `Hello World!` and does not publish to MQ. |
+
+Each project has its own `pyproject.toml`, `uv.lock`, and environment. Run `uv` commands
+from the relevant project directory. There is no configured uv workspace or dependency
+between the projects. The setup, runtime, tests, and Docker instructions below apply to
+the root triage service. `deployment/podman-compose/` provides local Temporal infrastructure.
+Repository guidance and the current architecture context are maintained in [AGENTS.MD](AGENTS.MD).
+
 ## Runtime
 
 Run two processes: CLIENT consumes requests and submits workflows; WORKER executes parsing,

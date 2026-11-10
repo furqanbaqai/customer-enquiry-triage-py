@@ -2,19 +2,77 @@
 
 ## Purpose and scope
 
-These instructions apply to the entire repository. Keep this file current when architecture,
+These instructions apply to both projects in this monorepo. Keep this file current when architecture,
 tooling, or required validation changes. This snapshot replaces the conflicting September 6-10
 runtime notes; the source and tests were updated on 2026-09-11 to remove the unused legacy
 orchestrator. The active Temporal workflow and registered names remain unchanged.
 
-The application is a Python IBM MQ-to-Temporal customer enquiry triage proof of concept.
+The root application is a Python IBM MQ-to-Temporal customer enquiry triage proof of concept.
 The active workflow validates requests, classifies them through an OpenAI-compatible endpoint,
 generates a product-informed response, and publishes a response envelope to IBM MQ.
 SQL persistence, transactional delivery, backout handling, and application-level deduplication
 are not implemented.
 
+## Monorepo context (reviewed 2026-11-10)
+
+The Git repository root is `customer-enquiry-triage-py/`, beneath the current workspace
+`poc-slm-py/`. Resolve paths below relative to the Git repository root.
+There are two independently packaged Python projects:
+
+| Location | Package | Current responsibility |
+| --- | --- | --- |
+| `.` | `customer-enquiry-triage` 0.1.0 | MQ request consumption, Temporal workflow processing, AI classification/generation, MQ response publication. |
+| `app.util.publish-messages/` | `util.publish.mq` 0.1.0 | Standalone publishing utility scaffold; currently prints `Hello World!` only. |
+
+Both require Python >=3.12 and have their own `pyproject.toml`, `uv.lock`, and local `.venv`.
+The root uses Hatchling and packages `src`; the utility uses setuptools and packages the
+`main` module from its own `src/main.py`. There is no `[tool.uv.workspace]`, cross-project
+dependency, or shared runtime package configured. This is a monorepo with separate projects,
+not a configured uv workspace. Do not consolidate environments or lockfiles implicitly.
+
+The utility declares `ibmmq` and `jsonschema`, but does not yet implement MQ connections,
+message loading, schema validation, configuration, or tests. It does not use the root
+configuration loader, activities, or MQ adapter. The root's response-publishing activity
+is an existing separate implementation, not a call to this utility. Do not describe the
+utility as an operational publisher until that functionality exists.
+
+Run dependency, build, and execution commands from the intended project directory.
+Root pytest discovery is limited to `tests/`, mypy commands target root `src tests`, and
+root coverage measures root `src`. These do not validate the utility. Recursive Ruff commands
+can discover nested Python files; the utility has no independent lint/type/test configuration.
+The root Dockerfile builds the triage service only. `deployment/podman-compose/` supplies
+Temporal infrastructure, not a third application project or a utility deployment.
+
+For utility changes, preserve its independent entry point and packaging, and add relevant
+configuration/examples and tests as behavior is implemented. Repository-wide security and
+change discipline below apply to both projects; root-specific `src` imports, composition-root,
+Temporal, and configuration guidance apply to the triage service unless explicitly adopted.
+
+```powershell
+# From the repository root: explicit service entry points
+uv sync --dev
+uv run customer-enquiry-triage-client
+# In another terminal at the repository root:
+uv run customer-enquiry-triage-worker
+
+# Utility commands, from its project directory
+Set-Location app.util.publish-messages
+uv sync
+uv run util.publish.mq
+uv build
+```
+
+The generic root entry points do not parse positional CLIENT/WORKER arguments. Use the
+dedicated commands above. `src.app.main("CLIENT")` and `src.app.main("WORKER")` are explicit
+Python alternatives; the generic startup also has the fallback bug documented below.
+This review inspected source, manifests, documentation, and deployment definitions; historical
+test results below remain dated evidence and were not rerun as part of this context update.
+
 ## Repository map
 
+- `pyproject.toml`, `uv.lock`: root triage package and dependency lock.
+- `app.util.publish-messages/`: independent utility project with its own manifest and lock.
+- `app.util.publish-messages/src/main.py`: utility entry point; currently a greeting only.
 - `src/app.py`: composition root, CLIENT/WORKER mode selection, MQ callback and shutdown.
 - `src/application/CustomerEnquiryClient.py`: synchronous validation and Temporal submission.
 - `src/application/CustomerEnquiryOrchestrator_v2.py`: active Temporal workflow, with class spelling
@@ -157,9 +215,9 @@ The project requires Python 3.12 or newer, while `.python-version` currently sel
 uv sync --dev
 
 # Run the service
-uv run python -m src CLIENT
-# Equivalent installed entry point
-uv run customer-enquiry-triage CLIENT
+uv run customer-enquiry-triage-client
+# Run WORKER in another terminal
+uv run customer-enquiry-triage-worker
 
 # Run all tests
 uv run pytest -q
