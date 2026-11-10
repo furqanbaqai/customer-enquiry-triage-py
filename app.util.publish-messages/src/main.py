@@ -8,16 +8,26 @@ Reference: https://github.com/furqanbaqai/customer-enquiry-triage-py
 import csv
 import json
 import logging
-import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Protocol
 
-from dotenv import load_dotenv
+from environs import Env
 
 LOGGER = logging.getLogger(__name__)
+PROJECT_DIRECTORY = Path(__file__).resolve().parents[1]
+ENVIRONMENT_KEYS = (
+    "OFTL_SOURCE_CSV_FILE",
+    "OFTL_IMQ_HOST",
+    "OFTL_IMQ_LISTENER",
+    "OFTL_IMQ_CHANNEL",
+    "OFTL_IMQ_REQUEST_QUEUE",
+    "OFTL_IMQ_USERNAME",
+    "OFTL_IMQ_PASS",
+    "OFTL_IMQ_QMGR",
+)
 COLUMNS = (
     "Nature Of Request",
     "First Name",
@@ -133,7 +143,7 @@ class MessageBuilder:
         message: dict[str, object] = {
             "meta": {
                 "refNumber": reference_time.strftime("ENQ-%Y-%m%d%H%M%S%f"),
-                "channel": "WBST",
+                "channel": "WebSite",
                 "reqIssuedAt": timestamp,
             },
             "receivedAt": timestamp,
@@ -188,6 +198,9 @@ def run(settings: Settings) -> int:
             options.Options = ibmmq.CMQC.MQPMO_NO_SYNCPOINT | ibmmq.CMQC.MQPMO_FAIL_IF_QUIESCING
             try:
                 queue.put(payload, descriptor, options)
+                LOGGER.info(
+                    "Published message with refNumber %s", json.loads(payload)["meta"]["refNumber"]
+                )
             except ibmmq.MQMIError as exc:
                 raise UtilityError("IBM MQ put failed") from exc
 
@@ -227,12 +240,24 @@ def run(settings: Settings) -> int:
             raise UtilityError("Messages published, but IBM MQ cleanup failed")
 
 
+def load_environment() -> Env:
+    """Load all utility .env values without searching parent or working directories."""
+    environment = Env()
+    environment.read_env(PROJECT_DIRECTORY / ".env", recurse=False, override=False)
+    return environment
+
+
 def main() -> int:
     """Load all .env variables at startup; return a conventional console exit code."""
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     try:
-        load_dotenv(dotenv_path=Path.cwd() / ".env", override=False, encoding="utf-8-sig")
-        count = run(Settings.from_environment(os.environ))
+        environment = load_environment()
+        values = {
+            key: value
+            for key in ENVIRONMENT_KEYS
+            if (value := environment.str(key, default=None)) is not None
+        }
+        count = run(Settings.from_environment(values))
     except UtilityError as exc:
         LOGGER.error("%s", exc)
         return 1

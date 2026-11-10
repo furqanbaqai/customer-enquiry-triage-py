@@ -3,9 +3,9 @@ name = "util.publish.mq"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
+    "environs>=15.2.0",
     "ibmmq>=2.1.0",
     "jsonschema>=4.23.0",
-    "python-dotenv>=1.2.4",
 ]
 
 [project.scripts]

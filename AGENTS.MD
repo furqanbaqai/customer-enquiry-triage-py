@@ -30,8 +30,10 @@ The root uses Hatchling and packages `src`; the utility uses setuptools and pack
 dependency, or shared runtime package configured. This is a monorepo with separate projects,
 not a configured uv workspace. Do not consolidate environments or lockfiles implicitly.
 
-The utility uses `python-dotenv` to load all current-directory `.env` variables at console
-startup, preserving existing process values. `OFTL_SOURCE_CSV_FILE` supplies the UTF-8 CSV.
+The utility uses `environs.Env` to load all variables from `app.util.publish-messages/.env`
+at console startup, independent of the working directory, preserving process-value precedence.
+It disables parent-directory .env searching. `OFTL_SOURCE_CSV_FILE` supplies the UTF-8 CSV;
+relative CSV paths still resolve against the working directory.
 It validates all eight documented CSV columns and record widths before connecting, creates
 UTC envelopes with `WBST` and six-digit microsecond reference suffixes, and publishes
 persistent UTF-8 MQ string messages to `OFTL_IMQ_REQUEST_QUEUE`. `OFTL_IMQ_CHANNEL` is the

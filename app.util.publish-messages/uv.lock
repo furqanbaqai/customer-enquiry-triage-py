@@ -89,6 +89,19 @@ wheels = [
 ]
 
 [[package]]
+name = "environs"
+version = "15.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "marshmallow" },
+    { name = "python-dotenv" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/94/1d/eaf85ea68976560b74eb2449baf43b5ec020db4960e56b1143b83703524f/environs-15.2.0.tar.gz", hash = "sha256:1bfc0d32b43692f28a6e294ad2b69903d43a214672ebcf3124a66d66b52b2418", size = 36816, upload-time = "2026-08-29T19:38:57.49Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7f/0e/47b55c623e8062fc64c16306ed7fde823e992452953a395220d209b7a208/environs-15.2.0-py3-none-any.whl", hash = "sha256:3e460fda6b3c29ebf9add476f55f4977018d00071cac1a62f4399e35b8d28c7a", size = 17393, upload-time = "2026-08-29T19:38:56.39Z" },
+]
+
+[[package]]
 name = "ibmmq"
 version = "2.1.2"
 source = { registry = "https://pypi.org/simple" }
@@ -234,6 +247,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/c1/ea/7421d9e6db894cd6cd788b604b3394a163ded6b942052b6f96c23ccf08e1/librt-0.16.0-cp315-cp315t-win32.whl", hash = "sha256:375bfe6b572a8f6cfc398709356046173bf27e64c4c5edaf5f7062f051fb4bf9", size = 104355, upload-time = "2026-09-29T00:55:04.533Z" },
     { url = "https://files.pythonhosted.org/packages/85/6d/7c31a506eb847bc58aeb2402d58e17605e821f68ab5df5e66fe274a6df41/librt-0.16.0-cp315-cp315t-win_amd64.whl", hash = "sha256:bd3150023d3dc2bc70f3784e59ffa1140d56ddba3d8125b3d6f9f85221279bfc", size = 126134, upload-time = "2026-09-29T00:55:06.017Z" },
     { url = "https://files.pythonhosted.org/packages/36/69/7a5d10ac409c4da0355e054a14371871da9b5557fcc42772cd00181c6cce/librt-0.16.0-cp315-cp315t-win_arm64.whl", hash = "sha256:8ceafb70f2a4f0826f11031942e59c0728fd98da112dc346d4352bde1e486866", size = 116391, upload-time = "2026-09-29T00:55:07.484Z" },
+]
+
+[[package]]
+name = "marshmallow"
+version = "4.4.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/0d/3e/2b75ae631789fc13191ab82bc08957af381c00fffc5fefc6248b719bc9d2/marshmallow-4.4.0.tar.gz", hash = "sha256:9e6ffa8511012ca89732324c1c253efd7b4d35632dcbdf80aa793fe01804af3e", size = 222228, upload-time = "2026-11-04T00:09:23.777Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/33/e7/07f4ba1b1053c565081a843782544e81a02302c9fe457c4a8e25196087af/marshmallow-4.4.0-py3-none-any.whl", hash = "sha256:03a882ff2eabb9a4e24b433c2949f359ef4d172a12fdc14cde10375fd55328b4", size = 53724, upload-time = "2026-11-04T00:09:22.005Z" },
 ]
 
 [[package]]
@@ -521,9 +543,9 @@ name = "util-publish-mq"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "environs" },
     { name = "ibmmq" },
     { name = "jsonschema" },
-    { name = "python-dotenv" },
 ]
 
 [package.dev-dependencies]
@@ -535,9 +557,9 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "environs", specifier = ">=15.2.0" },
     { name = "ibmmq", specifier = ">=2.1.0" },
     { name = "jsonschema", specifier = ">=4.23.0" },
-    { name = "python-dotenv", specifier = ">=1.2.4" },
 ]
 
 [package.metadata.requires-dev]

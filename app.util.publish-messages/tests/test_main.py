@@ -221,14 +221,34 @@ def test_env_loads_all_variables_and_preserves_process_values(
 ) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(os, "environ", {"CUSTOM_SETTING": "process"})
-    (tmp_path / ".env").write_text("CUSTOM_SETTING=file\nEXTRA_SETTING=loaded\n", encoding="utf-8")
+    project = tmp_path / "app.util.publish-messages"
+    project.mkdir()
+    monkeypatch.setattr(main, "PROJECT_DIRECTORY", project)
+    (project / ".env").write_text("CUSTOM_SETTING=file\nEXTRA_SETTING=loaded\n", encoding="utf-8")
+    (tmp_path / ".env").write_text("WRONG_FILE=yes\n", encoding="utf-8")
+    environment = main.load_environment()
+    assert environment.str("CUSTOM_SETTING") == "process"
+    assert environment.str("EXTRA_SETTING") == "loaded"
+    assert environment.str("WRONG_FILE", default=None) is None
     assert main.main() == 1
-    assert os.environ["CUSTOM_SETTING"] == "process"
-    assert os.environ["EXTRA_SETTING"] == "loaded"
+
+
+def test_startup_uses_project_env(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, environment: dict[str, str]
+) -> None:
+    monkeypatch.setattr(os, "environ", {})
+    monkeypatch.setattr(main, "PROJECT_DIRECTORY", tmp_path)
+    (tmp_path / ".env").write_text(
+        "\n".join(f'{key}="{value}"' for key, value in environment.items()), encoding="utf-8"
+    )
+    runner = Mock(return_value=1)
+    monkeypatch.setattr(main, "run", runner)
+    assert main.main() == 0
+    assert runner.call_args.args[0] == main.Settings.from_environment(environment)
 
 
 def test_console_exit_codes(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(main, "load_dotenv", Mock())
+    monkeypatch.setattr(main, "load_environment", Mock())
     monkeypatch.setattr(main.Settings, "from_environment", Mock())
     runner = Mock(return_value=2)
     monkeypatch.setattr(main, "run", runner)

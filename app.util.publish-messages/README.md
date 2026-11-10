@@ -4,7 +4,7 @@ Console utility that loads customer enquiries from CSV and publishes one UTF-8 J
 message per row to IBM MQ. Requires Python >=3.12, uv, and the native IBM MQ client
 libraries available to `ibmmq` (including the appropriate DLL search path on Windows).
 
-Run from this directory so `.env` and relative CSV paths resolve correctly:
+Set up the utility from this directory:
 
 ```powershell
 uv sync --dev
@@ -13,8 +13,9 @@ Copy-Item .env.example .env
 uv run util.publish.mq
 ```
 
-All variables in the current directory's `.env` load at console startup; existing process
-environment values take precedence. `.env` is optional when all settings are supplied by
+All variables in `app.util.publish-messages/.env` load into an `environs.Env` instance at
+console startup, regardless of the working directory. Other `.env` files are not searched.
+Existing process environment values take precedence. `.env` is optional when all settings are supplied by
 the process environment. Credentials and message contents are not logged. Keep `.env`
 and real customer CSVs out of version control.
 
