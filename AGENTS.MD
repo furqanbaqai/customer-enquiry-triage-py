@@ -22,7 +22,7 @@ There are two independently packaged Python projects:
 | Location | Package | Current responsibility |
 | --- | --- | --- |
 | `.` | `customer-enquiry-triage` 0.1.0 | MQ request consumption, Temporal workflow processing, AI classification/generation, MQ response publication. |
-| `app.util.publish-messages/` | `util.publish.mq` 0.1.0 | Standalone publishing utility scaffold; currently prints `Hello World!` only. |
+| `app.util.publish-messages/` | `util.publish.mq` 0.1.0 | Console utility that converts CSV rows to request JSON and publishes sequentially to IBM MQ. |
 
 Both require Python >=3.12 and have their own `pyproject.toml`, `uv.lock`, and local `.venv`.
 The root uses Hatchling and packages `src`; the utility uses setuptools and packages the
@@ -30,16 +30,25 @@ The root uses Hatchling and packages `src`; the utility uses setuptools and pack
 dependency, or shared runtime package configured. This is a monorepo with separate projects,
 not a configured uv workspace. Do not consolidate environments or lockfiles implicitly.
 
-The utility declares `ibmmq` and `jsonschema`, but does not yet implement MQ connections,
-message loading, schema validation, configuration, or tests. It does not use the root
-configuration loader, activities, or MQ adapter. The root's response-publishing activity
-is an existing separate implementation, not a call to this utility. Do not describe the
-utility as an operational publisher until that functionality exists.
+The utility uses `python-dotenv` to load all current-directory `.env` variables at console
+startup, preserving existing process values. `OFTL_SOURCE_CSV_FILE` supplies the UTF-8 CSV.
+It validates all eight documented CSV columns and record widths before connecting, creates
+UTC envelopes with `WBST` and six-digit microsecond reference suffixes, and publishes
+persistent UTF-8 MQ string messages to `OFTL_IMQ_REQUEST_QUEUE`. `OFTL_IMQ_CHANNEL` is the
+connection channel. Optional `OFTL_IMQ_QMGR` defaults to blank; blank usernames omit credentials.
+The first failed put stops processing with exit 1; prior nontransactional puts remain delivered.
+No retries, resume state, or cross-run deduplication exist. MQ handles are closed on exit.
+Its own README, `.env.example`, and mocked tests document the complete contract.
+It does not use the root configuration loader, activities, or MQ adapter. The root response
+publisher is separate. The root request schema does not accept `WBST`; a coordinated consumer
+schema change is needed for end-to-end use. Do not silently change the requested utility format.
 
 Run dependency, build, and execution commands from the intended project directory.
 Root pytest discovery is limited to `tests/`, mypy commands target root `src tests`, and
 root coverage measures root `src`. These do not validate the utility. Recursive Ruff commands
-can discover nested Python files; the utility has no independent lint/type/test configuration.
+can discover nested Python files; the utility now has its own Ruff, strict mypy, and pytest
+configuration and development dependencies. Run its `ruff check src tests`,
+`ruff format --check src tests`, `mypy src tests`, and `pytest -q` from its directory as well.
 The root Dockerfile builds the triage service only. `deployment/podman-compose/` supplies
 Temporal infrastructure, not a third application project or a utility deployment.
 
@@ -65,14 +74,23 @@ uv build
 The generic root entry points do not parse positional CLIENT/WORKER arguments. Use the
 dedicated commands above. `src.app.main("CLIENT")` and `src.app.main("WORKER")` are explicit
 Python alternatives; the generic startup also has the fallback bug documented below.
-This review inspected source, manifests, documentation, and deployment definitions; historical
-test results below remain dated evidence and were not rerun as part of this context update.
+The initial context review inspected source, manifests, documentation, and deployment definitions.
+The utility implementation subsequently passed 22 mocked tests, Ruff lint/format checks, and
+strict mypy on 2026-11-10. Tests required execution outside the sandbox due to Windows temporary
+directory access restrictions. No live MQ publication was exercised. Historical root test
+results below remain dated evidence.
+The subsequent root regression check on 2026-11-10 found 140 passing tests and four failures
+in the existing CLI mode-selection tests (`tests/unit/test_app.py`); strict root mypy also
+reports two existing `str | None` argument mismatches in `src/__init__.py` and that test file.
+Root lint/format checks passed. The utility wheel and source distribution built successfully.
+These root startup issues are outside the utility change; root application source is unchanged.
 
 ## Repository map
 
 - `pyproject.toml`, `uv.lock`: root triage package and dependency lock.
 - `app.util.publish-messages/`: independent utility project with its own manifest and lock.
-- `app.util.publish-messages/src/main.py`: utility entry point; currently a greeting only.
+- `app.util.publish-messages/src/main.py`: CSV loading, envelope conversion, MQ adapter, console entry.
+- `app.util.publish-messages/tests/`: independent mocked utility tests.
 - `src/app.py`: composition root, CLIENT/WORKER mode selection, MQ callback and shutdown.
 - `src/application/CustomerEnquiryClient.py`: synchronous validation and Temporal submission.
 - `src/application/CustomerEnquiryOrchestrator_v2.py`: active Temporal workflow, with class spelling

@@ -11,7 +11,7 @@ This repository contains two independent Python projects:
 | Directory | Package | Status |
 | --- | --- | --- |
 | Repository root | `customer-enquiry-triage` | MQ-to-Temporal triage service described below; runs CLIENT and WORKER processes. |
-| [`app.util.publish-messages/`](app.util.publish-messages/README.md) | `util.publish.mq` | Publishing utility scaffold; currently prints `Hello World!` and does not publish to MQ. |
+| [`app.util.publish-messages/`](app.util.publish-messages/README.md) | `util.publish.mq` | Console utility that converts CSV enquiries to JSON and publishes them to IBM MQ. |
 
 Each project has its own `pyproject.toml`, `uv.lock`, and environment. Run `uv` commands
 from the relevant project directory. There is no configured uv workspace or dependency
