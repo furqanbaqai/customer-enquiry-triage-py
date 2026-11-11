@@ -100,6 +100,7 @@ def read_rows(source: Path) -> list[dict[str, str]]:
     """Validate the whole UTF-8 CSV before any MQ side effects."""
     rows: list[dict[str, str]] = []
     try:
+        print(f"Reading CSV from {source}")
         with source.open(encoding="utf-8-sig", newline="") as stream:
             reader = csv.reader(stream, strict=True)
             headers = next(reader, [])
@@ -119,6 +120,7 @@ def read_rows(source: Path) -> list[dict[str, str]]:
                     )
                 rows.append(row)
     except (OSError, UnicodeError, csv.Error) as exc:
+        print(f"Error reading CSV from {source}: {exc}")
         raise UtilityError(
             "Cannot read source CSV; verify path, UTF-8 encoding, and CSV syntax"
         ) from exc

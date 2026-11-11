@@ -108,7 +108,8 @@ class CustomerEnquiryClient:
                 id=workflow_id,
                 task_queue="CUSTOMER.ENQUIRY.REQUEST",
                 id_reuse_policy=reuse_policy,
-                execution_timeout=timedelta(minutes=25),
+                # [20261111]: Allow more time for the workflow to complete changed 15 -> 45
+                execution_timeout=timedelta(minutes=45),
                 task_timeout=timedelta(seconds=10),
                 rpc_timeout=timedelta(seconds=60),
             )

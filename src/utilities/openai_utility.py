@@ -48,7 +48,13 @@ class OpenAIUtility:
         timeout = self._int_setting("OFTL_OPENAI_TIMEOUT", 300, minimum=1)
         stream = self._bool_setting("OFTL_OPENAI_STREAM", False)
 
-        client = self._client_factory(api_key=api_token, base_url=self._base_url(endpoint_url))
+        # client = self._client_factory(api_key=api_token, base_url=self._base_url(endpoint_url))
+        # [20261111]: Disable retries to avoid long delays when the AI service is unresponsive
+        client = self._client_factory(
+            api_key=api_token,
+            base_url=self._base_url(endpoint_url),
+            max_retries=0,
+        )
         if stream:
             chunks = client.chat.completions.create(
                 model=self._DEFAULT_MODEL,

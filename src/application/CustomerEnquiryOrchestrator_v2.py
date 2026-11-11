@@ -64,6 +64,7 @@ class CustomerEnquiryOrchaestrator:
                 message,
                 start_to_close_timeout=timedelta(seconds=30),
                 schedule_to_close_timeout=timedelta(minutes=2),
+                schedule_to_start_timeout=None,
                 retry_policy=AI_RETRY_POLICY,
             )
             if not isinstance(validated_message, dict):
@@ -75,7 +76,9 @@ class CustomerEnquiryOrchaestrator:
                 MessageClassifier.classify_message,
                 parsed_message,
                 start_to_close_timeout=timedelta(minutes=5),
-                schedule_to_close_timeout=timedelta(minutes=9),
+                # [20261111]: Allow more time for the AI service to respond changed 9
+                schedule_to_close_timeout=timedelta(minutes=15),
+                schedule_to_start_timeout=None,
                 retry_policy=AI_RETRY_POLICY,
             )
             if not isinstance(_classification, dict):
@@ -90,7 +93,9 @@ class CustomerEnquiryOrchaestrator:
                 MessageGenerator.generate_response_message,
                 args=[parsed_message["message"], _classification["product_code"], emotion_type],
                 start_to_close_timeout=timedelta(minutes=5),
-                schedule_to_close_timeout=timedelta(minutes=9),
+                # [20261111]: Allow more time for the AI service to respond changed 9 -> 30
+                schedule_to_close_timeout=timedelta(minutes=15),
+                schedule_to_start_timeout=None,
                 retry_policy=AI_RETRY_POLICY,
             )
             if not isinstance(_ai_response_message, dict):
@@ -131,6 +136,7 @@ class CustomerEnquiryOrchaestrator:
             ],
             start_to_close_timeout=timedelta(seconds=30),
             schedule_to_close_timeout=timedelta(minutes=3),
+            schedule_to_start_timeout=None,
             retry_policy=PUBLISH_RETRY_POLICY,
         )
         if processing_error is not None:

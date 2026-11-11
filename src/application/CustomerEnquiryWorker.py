@@ -8,6 +8,7 @@ Reference: https://github.com/furqanbaqai/customer-enquiry-triage-py
 import asyncio
 from datetime import timedelta
 
+from nexusrpc import service
 from temporalio.client import Client
 from temporalio.worker import Worker
 
@@ -49,7 +50,7 @@ class CustomerEnquiryWorker:
                     publisher.push_response_message,
                 ],
                 graceful_shutdown_timeout=timedelta(minutes=10),
-                max_concurrent_activities=2,
+                max_concurrent_activities=1,  # [20261111]: Limit to 1 to avoid overwhelming the AI
             )
             Logging.info("Temporal worker started on task queue CUSTOMER.ENQUIRY.REQUEST.")
             await worker.run()

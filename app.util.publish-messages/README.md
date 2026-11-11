@@ -19,6 +19,17 @@ Existing process environment values take precedence. `.env` is optional when all
 the process environment. Credentials and message contents are not logged. Keep `.env`
 and real customer CSVs out of version control.
 
+For Windows paths containing spaces, use one pair of single quotes in `.env`:
+
+```dotenv
+OFTL_SOURCE_CSV_FILE='G:\My Drive\SimulatedData\enquiries.csv'
+```
+
+Do not put double quotes inside those single quotes: they become part of the filename
+and cause Windows error 22 (`Invalid argument`). If `uv` warns that `VIRTUAL_ENV`
+points to the parent project's environment, run `deactivate` before running the utility
+from this directory; `uv run` will use this utility's own `.venv`.
+
 | Variable | Meaning |
 | --- | --- |
 | `OFTL_SOURCE_CSV_FILE` | Required UTF-8 CSV path; relative to the current working directory. |
