@@ -64,7 +64,7 @@ class CustomerEnquiryOrchaestrator:
                 message,
                 start_to_close_timeout=timedelta(seconds=30),
                 schedule_to_close_timeout=timedelta(minutes=2),
-                schedule_to_start_timeout=None,
+                schedule_to_start_timeout=timedelta(minutes=30),
                 retry_policy=AI_RETRY_POLICY,
             )
             if not isinstance(validated_message, dict):
@@ -78,29 +78,43 @@ class CustomerEnquiryOrchaestrator:
                 start_to_close_timeout=timedelta(minutes=5),
                 # [20261111]: Allow more time for the AI service to respond changed 9
                 schedule_to_close_timeout=timedelta(minutes=15),
-                schedule_to_start_timeout=None,
+                schedule_to_start_timeout=timedelta(minutes=30),
                 retry_policy=AI_RETRY_POLICY,
             )
             if not isinstance(_classification, dict):
                 _classification = None
                 raise ValueError("The AI assessment must be a JSON object")
             emotion_type = _classification["emotionalType"]
+            product_code = _classification.get("product_code")
             if not isinstance(emotion_type, str):
                 raise ValueError("[ERR-40] The AI assessment emotional type must be a string")
-
-            stage = "generation"
-            _ai_response_message = await workflow.execute_activity_method(
-                MessageGenerator.generate_response_message,
-                args=[parsed_message["message"], _classification["product_code"], emotion_type],
-                start_to_close_timeout=timedelta(minutes=5),
-                # [20261111]: Allow more time for the AI service to respond changed 9 -> 30
-                schedule_to_close_timeout=timedelta(minutes=15),
-                schedule_to_start_timeout=None,
-                retry_policy=AI_RETRY_POLICY,
-            )
-            if not isinstance(_ai_response_message, dict):
-                _ai_response_message = None
-                raise ValueError("The AI response must be a JSON object")
+            if (
+                not product_code
+                or not isinstance(product_code, str)
+                or product_code.strip().upper() in {"UNKNOWN", "NULL"}
+            ):
+                error_code = "8500"
+                error_message = "Unable to map it with the specific product"
+                processing_error = ApplicationError(
+                    error_message,
+                    error_code,
+                    type="CustomerEnquiryProcessingError",
+                    non_retryable=True,
+                )
+            else:
+                stage = "generation"
+                _ai_response_message = await workflow.execute_activity_method(
+                    MessageGenerator.generate_response_message,
+                    args=[parsed_message["message"], product_code, emotion_type],
+                    start_to_close_timeout=timedelta(minutes=5),
+                    # [20261111]: Allow more time for the AI service to respond changed 9 -> 30
+                    schedule_to_close_timeout=timedelta(minutes=15),
+                    schedule_to_start_timeout=timedelta(minutes=30),
+                    retry_policy=AI_RETRY_POLICY,
+                )
+                if not isinstance(_ai_response_message, dict):
+                    _ai_response_message = None
+                    raise ValueError("The AI response must be a JSON object")
         except ActivityError as error:
             if is_cancelled_exception(error):
                 raise
@@ -136,7 +150,7 @@ class CustomerEnquiryOrchaestrator:
             ],
             start_to_close_timeout=timedelta(seconds=30),
             schedule_to_close_timeout=timedelta(minutes=3),
-            schedule_to_start_timeout=None,
+            schedule_to_start_timeout=timedelta(minutes=30),
             retry_policy=PUBLISH_RETRY_POLICY,
         )
         if processing_error is not None:

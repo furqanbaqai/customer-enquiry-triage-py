@@ -175,13 +175,17 @@ requires original metadata to be a mapping. Missing partial results are omitted 
 
 ## AI, prompts, and observability
 
-- OpenAIUtility uses Chat Completions, model `default`, configurable sampling/streaming and a
-  default 300-second HTTP timeout. callJson checks only that decoded JSON is an object.
+- OpenAIUtility uses Chat Completions, model `OFTL_OPENAI_MODEL` (default `default`), and a required
+  `OFTL_OPENAI_MODEL_TYPE` setting. QWEN requests include configurable sampling and use
+  `OFTL_OPENAI_MAX_TOKENS`; GPT requests omit sampling parameters and use
+  `OFTL_OPENAI_MAX_COMPLETION_TOKENS` (default 25,000), which includes reasoning tokens.
+  Streaming and the default 300-second HTTP timeout are configurable. callJson checks only that
+  decoded JSON is an object.
 - Classification template variables: MESSAGE and CATEGORY. Generation variables: INPUT_MESSAGE,
   INPUT_EMOTION, PRODUCT_INFORMATION. Templates are cached by resolved path per loader.
 - `.env.example` selects classification v04 with the supported MESSAGE/CATEGORY placeholders.
   Both configured templates were verified to render. The unversioned classification template
-  remains incompatible with the active caller. All 24 application OFTL_* variables are documented
+  remains incompatible with the active caller. All 27 application OFTL_* variables are documented
   in README and the example, whose service addresses target Docker Desktop host connectivity.
 - Product codes from the model are not validated against a catalogue allowlist or checked for
   path containment before file access. Unknown products fail generation; response schemas are

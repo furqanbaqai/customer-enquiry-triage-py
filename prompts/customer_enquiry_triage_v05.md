@@ -19,6 +19,7 @@ STRICT NEGATIVE CONSTRAINTS:
 - NEVER put the product code, parentheses, `SIB-RET`, `SIB-CORP`, or `UNKNOWN` inside the `product` field.
 - NEVER invent a segment or category; they must match the taxonomy line exactly.
 - NEVER override the "Inquiry Product" based on generic terms in the Message Text like "transactions", "funds", "money", or "account". Only override if the Message Text explicitly names a *different, specific* product (e.g., "my physical debit card was stolen").
+- NEVER put null string for the tag `product_code`, in-case no product is mapped, set the value to "UNKNOWN"
 
 ## ALLOWED PRODUCTS
 Retail | Accounts: Current Account (SIB-RET-001), Savings Account (SIB-RET-002), Watani Account (SIB-RET-003), Hassalati Account (SIB-RET-004), SIB Digital Account (SIB-RET-005), Millionaire Draw (SIB-RET-006), Universal Account (SIB-RET-007)

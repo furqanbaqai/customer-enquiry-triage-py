@@ -369,17 +369,25 @@ startup. CLIENT does not call the AI endpoint.
 | --- | --- | --- |
 | `OFTL_OPENAI_URL` | Required | OpenAI-compatible base URL or full `/chat/completions` URL. |
 | `OFTL_OPENAI_APITOKEN` | Required | Non-empty API token. |
-| `OFTL_OPENAI_TEMPERATURE` | `0.1` | Number from 0 to 2. |
-| `OFTL_OPENAI_TOP_P` | `0.9` | Number from 0 to 1. |
-| `OFTL_OPENAI_MAX_TOKENS` | `200` | Integer >= 1. |
+| `OFTL_OPENAI_MODEL` | `default` | Model or deployment name sent in Chat Completions requests. |
+| `OFTL_OPENAI_MODEL_TYPE` | Required | `QWEN` sends temperature/top_p and max_tokens; `GPT` omits sampling parameters and sends max_completion_tokens. |
+| `OFTL_OPENAI_TEMPERATURE` | `0.1` | QWEN only; number from 0 to 2. |
+| `OFTL_OPENAI_TOP_P` | `0.9` | QWEN only; number from 0 to 1. |
+| `OFTL_OPENAI_MAX_TOKENS` | `200` | QWEN output limit; integer >= 1. |
+| `OFTL_OPENAI_MAX_COMPLETION_TOKENS` | `25000` | GPT completion limit, including reasoning tokens and visible output; integer >= 1. Tune after observing token usage. |
 | `OFTL_OPENAI_TIMEOUT` | `300` | Integer >= 1; HTTP timeout in seconds. |
 | `OFTL_OPENAI_STREAM` | `False` | `true` or `false`, case-insensitive; no numeric/yes/no aliases. |
 | `OFTL_AI_PROMPT_1` | Required; example `prompts/customer_enquiry_triage_v04.md` | Classification template; no code default path. |
 | `OFTL_AI_PROMPT_2` | Required; example `prompts/message-generation/enquiry-message-generator-v1.0.md` | Response-generation template; no code default path. |
 | `OFTL_AI_PRODUCTCAT` | Optional; default `<project>/prompts/product_json` | Product catalogue folder. Each lookup appends `{product_code}.json`; unset or empty uses the bundled folder. |
 
-The model name is fixed as `default`; no model environment variable is implemented. Product
-JSON comes from the folder configured by `OFTL_AI_PRODUCTCAT`, defaulting to `prompts/product_json/`.
+The model name comes from `OFTL_OPENAI_MODEL`, defaulting to `default`. For providers that route
+requests by deployment name, configure the matching deployment name. Product JSON comes from the
+folder configured by `OFTL_AI_PRODUCTCAT`, defaulting to `prompts/product_json/`.
+GPT model requests omit `temperature` and `top_p` so the endpoint can apply its supported defaults.
+GPT reasoning tokens count against `OFTL_OPENAI_MAX_COMPLETION_TOKENS`; an exhausted budget can
+produce no visible answer. The configured budget is logged alongside the API finish reason and
+reported reasoning-token usage when the endpoint returns an empty response.
 
 ### Logging
 

@@ -1,4 +1,4 @@
-# util.publish.mq
+# Console utility for publishing messages
 
 Console utility that loads customer enquiries from CSV and publishes one UTF-8 JSON
 message per row to IBM MQ. Requires Python >=3.12, uv, and the native IBM MQ client
