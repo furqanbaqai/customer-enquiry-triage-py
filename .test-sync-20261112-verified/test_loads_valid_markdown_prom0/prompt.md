@@ -1,0 +1,1 @@
+A prompt without variables.

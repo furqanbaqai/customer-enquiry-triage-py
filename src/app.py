@@ -48,7 +48,7 @@ def dispatch_message(
     executor: Executor,
     **kwargs: Any,
 ) -> None:
-    """Copy an MQ delivery and submit it to the application worker.
+    """Copy an MQ delivery and wait for the application worker to finish.
 
     IBM MQ owns the callback buffers. Copying the payload before returning prevents the worker from
     reading memory that MQ has already reused for a subsequent delivery.
@@ -58,11 +58,13 @@ def dispatch_message(
     message_length = callback_context.DataLength if callback_context is not None else None
     message = kwargs.get("msg")
     payload = bytes(message[:message_length]) if message is not None else b""
-    executor.submit(
+    future = executor.submit(
         on_message,
         msg=payload,
         cbc=_CallbackContext(reason=reason, data_length=len(payload)),
     )
+    # Wait before polling MQ for the next request.
+    future.result()
 
 
 class _CallbackContext:

@@ -3,7 +3,9 @@ import os
 import signal
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Event
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -77,6 +79,7 @@ def test_dispatch_message_copies_mq_buffer_before_submitting() -> None:
     )
     buffer[:] = b"buffer reused by IBM MQ...."
 
+    executor.submit.return_value.result.assert_called_once_with()
     submitted = executor.submit.call_args
     assert submitted.args == (app.on_message,)
     assert submitted.kwargs["msg"] == b"first message"
@@ -171,3 +174,33 @@ def test_mq_fatal_error_exits_even_if_logging_fails(monkeypatch: pytest.MonkeyPa
         app._exit_on_mq_error(RuntimeError("MQRC_CONNECTION_BROKEN"))
 
     exit_process.assert_called_once_with(1)
+
+
+def test_dispatch_waits_for_workflow_before_next_request(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    started = Event()
+    release = Event()
+    completed: list[bytes] = []
+
+    def process(payload: bytes) -> None:
+        started.set()
+        assert release.wait(timeout=5)
+        completed.append(payload)
+
+    monkeypatch.setattr(CustomerEnquiryClient, "sendToWorkflow", process)
+    with ThreadPoolExecutor(max_workers=1) as worker, ThreadPoolExecutor(max_workers=1) as consumer:
+
+        def consume() -> None:
+            app.dispatch_message(worker, msg=b"first")
+            app.dispatch_message(worker, msg=b"second")
+
+        pending = consumer.submit(consume)
+        try:
+            assert started.wait(timeout=5)
+            assert not pending.done()
+            assert completed == []
+        finally:
+            release.set()
+        pending.result(timeout=5)
+    assert completed == [b"first", b"second"]

@@ -48,7 +48,8 @@ def isolate_configuration(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.fixture
 def connect(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
-    connection = AsyncMock(return_value=MagicMock(start_workflow=AsyncMock()))
+    handle = MagicMock(result=AsyncMock(return_value={"meta": {"responseCode": "0000"}}))
+    connection = AsyncMock(return_value=MagicMock(start_workflow=AsyncMock(return_value=handle)))
     monkeypatch.setattr(client_module.Client, "connect", connection)
     return connection
 
@@ -60,8 +61,9 @@ def test_submits_validated_enquiry(
     if endpoint is not None:
         ConfigLoader.configurations["OFTL_AI_TEMPORALURL"] = endpoint
 
-    CustomerEnquiryClient.sendToWorkflow(json.dumps(enquiry).encode())
+    response = CustomerEnquiryClient.sendToWorkflow(json.dumps(enquiry).encode())
 
+    assert response == {"meta": {"responseCode": "0000"}}
     connect.assert_awaited_once_with(endpoint or "localhost:7233")
     execute = connect.return_value.start_workflow
     execute.assert_awaited_once()
@@ -71,10 +73,10 @@ def test_submits_validated_enquiry(
     assert arguments.kwargs["id"] == "CE-WEBSITE-REF-123"
     assert arguments.kwargs["task_queue"] == "CUSTOMER.ENQUIRY.REQUEST"
     assert arguments.kwargs["id_reuse_policy"] == WorkflowIDReusePolicy.ALLOW_DUPLICATE
-    assert arguments.kwargs["execution_timeout"].total_seconds() == 1500
+    assert arguments.kwargs["execution_timeout"].total_seconds() == 2700
     assert arguments.kwargs["rpc_timeout"].total_seconds() == 60
     assert arguments.kwargs["task_timeout"].total_seconds() == 10
-    execute.return_value.result.assert_not_called()
+    execute.return_value.result.assert_awaited_once_with()
 
 
 @pytest.mark.parametrize("payload", [b"\xff", b"{", b"{}", b"[]", b"null"])
@@ -107,7 +109,7 @@ def test_schema_load_failure(
     connect.assert_not_awaited()
 
 
-@pytest.mark.parametrize("stage", ["connect", "start"])
+@pytest.mark.parametrize("stage", ["connect", "start", "result"])
 @pytest.mark.parametrize("failure_type", [RuntimeError, TimeoutError, ValueError])
 def test_temporal_failure_preserves_cause_without_logging_payload(
     enquiry: dict[str, object],
@@ -119,8 +121,10 @@ def test_temporal_failure_preserves_cause_without_logging_payload(
     failure = failure_type("Temporal diagnostic detail")
     if stage == "connect":
         connect.side_effect = failure
-    else:
+    elif stage == "start":
         connect.return_value.start_workflow.side_effect = failure
+    else:
+        connect.return_value.start_workflow.return_value.result.side_effect = failure
     with pytest.raises(RuntimeError, match="Temporal enquiry execution failed") as error:
         CustomerEnquiryClient.sendToWorkflow(json.dumps(enquiry).encode())
     assert error.value.__cause__ is failure
@@ -157,7 +161,7 @@ def test_workflow_timeout_reserves_error_publication_budget(
 ) -> None:
     CustomerEnquiryClient.sendToWorkflow(json.dumps(enquiry).encode())
     timeout = connect.return_value.start_workflow.call_args.kwargs["execution_timeout"]
-    assert timeout.total_seconds() == 25 * 60
+    assert timeout.total_seconds() == 45 * 60
 
 
 @pytest.mark.parametrize("policy", list(WorkflowIDReusePolicy))

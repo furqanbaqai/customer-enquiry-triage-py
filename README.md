@@ -27,13 +27,14 @@ The active workflow is `CustomerEnquiryOrchaestrator` in `CustomerEnquiryOrchest
 This Temporal workflow is the sole enquiry orchestration implementation.
 
 The client validates UTF-8 JSON against the bundled request schema, including email/date-time
-formats, then uses `start_workflow`. It waits for start acceptance, not processing completion.
+formats, then uses `start_workflow`. It waits for workflow completion and returns the response envelope. The MQ consumer waits
+for completion or failure before fetching the next request, serializing requests per CLIENT process.
 Each submission creates a fresh Temporal client/event loop. IDs are
 `CE-{channel.upper()}-{refNumber}`. The configurable reuse policy defaults to `ALLOW_DUPLICATE`;
 other accepted names are `ALLOW_DUPLICATE_FAILED_ONLY`, `REJECT_DUPLICATE`, and
 `TERMINATE_IF_RUNNING`. Names are trimmed and case-insensitive.
 
-Client timeouts are 30 seconds for connection, 60 seconds for the start RPC, 25 minutes for
+Client timeouts are 30 seconds for connection, 60 seconds for the start RPC, 45 minutes for
 workflow execution, and 10 seconds for a workflow task. The worker connects once, registers
 four activities, limits concurrent activities to two, and configures ten minutes for graceful
 shutdown. WORKER mode requires MQ settings and closes its result adapter on normal exit.
@@ -460,7 +461,7 @@ MQ settings containing credentials; this remains an unresolved logging issue.
 MQGET removes requests without a transaction before validation and Temporal acceptance. Callback
 failures can lose requests; ambiguous result puts can cause duplicates. There is no SQL persistence,
 backout handling, durable application backlog, or application-level deduplication. The single
-submission executor has an unbounded backlog. The shared MQ publisher has no concurrency guard.
+submission executor waits for each delivery, leaving subsequent requests on MQ. The shared MQ publisher has no concurrency guard.
 
 ## Development and current validation
 

@@ -109,22 +109,22 @@ These root startup issues are outside the utility change; root application sourc
 ## Current runtime behavior
 
 1. Run CLIENT and WORKER as separate processes. Both load configuration. CLIENT polls the
-   request queue and copies deliveries into a single-thread executor with an unbounded backlog.
+   request queue and waits for each delivery in a single-thread executor before fetching another.
 2. `on_message` invokes `CustomerEnquiryClient.sendToWorkflow`. Invalid callback reasons and
    submission failures are logged; there is no retry, backout, or error-envelope publication here.
 3. The client decodes UTF-8 JSON and performs Draft 2020-12 schema validation with email/date-time
    format checking. It reloads/checks the schema for each message. It requires a synchronous
    caller without an active event loop and creates a fresh loop/client per enquiry.
-4. `Client.start_workflow` waits for start acceptance, not workflow completion. Its returned
-   handle is logged at DEBUG; no `handle.result()` is awaited. Later workflow failures are
-   handled by the workflow, not this callback.
+4. `Client.start_workflow` waits for start acceptance, then `handle.result()` waits for completion.
+   The synchronous wrapper returns the response envelope. Failures propagate to the callback
+   for logging; dispatch waits before polling the next request.
 5. Endpoint: `OFTL_AI_TEMPORALURL`, default `localhost:7233`. Task queue:
    `CUSTOMER.ENQUIRY.REQUEST`. ID: `CE-{channel.upper()}-{refNumber}`. Reuse policy comes from
    `OFTL_AI_TEMPORALREUSE_POLICY`, default `ALLOW_DUPLICATE`, trimmed and uppercased for enum
    lookup. Recognized names are ALLOW_DUPLICATE, ALLOW_DUPLICATE_FAILED_ONLY, REJECT_DUPLICATE,
    and TERMINATE_IF_RUNNING. No explicit ID conflict policy or UTF-8 byte-length check exists.
    Schema refNumber length is 1-36 characters and channel is restricted to seven values.
-6. Client timeouts: connection 30 seconds, start RPC 60 seconds, workflow execution 25 minutes,
+6. Client timeouts: connection 30 seconds, start RPC 60 seconds, workflow execution 45 minutes,
    workflow task 10 seconds. Existing executions retain their previously selected timeouts.
 7. WORKER creates an MQ result adapter at the composition root, injects ResponseMessageUtility,
    connects to Temporal once, and calls `worker.run()`. It registers all four activities,
@@ -206,7 +206,7 @@ requires original metadata to be a mapping. Missing partial results are omitted 
 - Client reuse-policy parsing lacks a type guard before `.strip()`; unknown names become ValueError.
 - The unused legacy orchestration module has been removed. Its parser tests now exercise
   RequestMessageParser; active workflow tests cover sequencing, payloads, budgets, partial
-  results, and error publication. Client tests verify start acceptance and all reuse policies.
+  results, and error publication. Client tests verify completion, returned responses, failure propagation, and all reuse policies.
   Generator tests use the three-string activity interface and mocked product JSON.
 - Fresh checks used `.venv/Scripts/python.exe -m`:
   - `ruff check .`: passed.

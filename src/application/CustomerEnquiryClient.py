@@ -26,8 +26,8 @@ class CustomerEnquiryClient:
     """Submit validated enquiries from synchronous application workers."""
 
     @staticmethod
-    def sendToWorkflow(payload: bytes) -> None:
-        """Validate UTF-8 JSON and wait for workflow start acceptance; raise on failure.
+    def sendToWorkflow(payload: bytes) -> dict[str, object] | None:
+        """Validate UTF-8 JSON and wait for workflow completion; raise on failure.
 
         Call from a synchronous thread without a running asyncio event loop.
         """
@@ -63,7 +63,7 @@ class CustomerEnquiryClient:
         try:
             asyncio.get_running_loop()
         except RuntimeError:
-            asyncio.run(CustomerEnquiryClient._async_send_message(enquiry))
+            return asyncio.run(CustomerEnquiryClient._async_send_message(enquiry))
         else:
             Logging.error(
                 "sendToWorkflow requires a synchronous thread without an active event loop."
@@ -71,7 +71,7 @@ class CustomerEnquiryClient:
             raise RuntimeError("sendToWorkflow cannot run inside an active asyncio event loop.")
 
     @staticmethod
-    async def _async_send_message(payload: dict[str, object]) -> None:
+    async def _async_send_message(payload: dict[str, object]) -> dict[str, object] | None:
         """Send an already validated enquiry as JSON to the v2 workflow."""
         endpoint = ConfigLoader.get("OFTL_AI_TEMPORALURL", "localhost:7233")
         if not isinstance(endpoint, str) or not endpoint.strip():
@@ -102,7 +102,7 @@ class CustomerEnquiryClient:
                 client = await Client.connect(endpoint.strip())
 
             stage = "start"
-            result = await client.start_workflow(
+            handle = await client.start_workflow(
                 CustomerEnquiryOrchaestrator.run,
                 json.dumps(payload, ensure_ascii=False),
                 id=workflow_id,
@@ -114,7 +114,10 @@ class CustomerEnquiryClient:
                 rpc_timeout=timedelta(seconds=60),
             )
             Logging.info("Temporal message publish for workflow with workflow ID %s", workflow_id)
-            Logging.debug("Temporal workflow result: %s", result)
+            stage = "result"
+            response = await handle.result()
+            Logging.info("Temporal workflow completed: %s", workflow_id)
+            return response
         except Exception as exception:
             Logging.error(
                 "Temporal enquiry execution failed: stage=%s, workflow_id=%s, "
